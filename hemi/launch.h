@@ -42,6 +42,12 @@ namespace hemi {
     // Launch __global__ function with an explicit execution policy / configuration
     template <typename... Arguments>
     void cudaLaunch(const ExecutionPolicy &p, void(*f)(Arguments...), Arguments... args);
+
+    // Number of host threads to be used (defaults to hardware_concurrency).
+    // Set less than or equal to zero for default value.  This must be fixed
+    // before first launch.
+    void setHostThreads(int i);
+
 }
 
 #include "launch.inl"

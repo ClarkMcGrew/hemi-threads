@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
-// 
+//
 // "Hemi" CUDA Portable C/C++ Utilities
-// 
+//
 // Copyright 2012-2015 NVIDIA Corporation
 //
 // License: BSD License, see LICENSE file in Hemi home directory
@@ -9,7 +9,7 @@
 // The home for Hemi is https://github.com/harrism/hemi
 //
 ///////////////////////////////////////////////////////////////////////////////
-// Please see the file README.md (https://github.com/harrism/hemi/README.md) 
+// Please see the file README.md (https://github.com/harrism/hemi/README.md)
 // for full documentation and discussion.
 ///////////////////////////////////////////////////////////////////////////////
 #pragma once
@@ -22,9 +22,13 @@
 #define HEMI_VERSION 200000
 
 // Note: when compiling on a system without CUDA installed
-// be sure to define this macro. Can also be used to disable CUDA 
+// be sure to define this macro. Can also be used to disable CUDA
 // device execution on systems with CUDA installed.
 // #define HEMI_CUDA_DISABLE
+
+#ifdef HEMI_CUDA_DISABLE
+#warning HEMI: HEMI_CUDA_DISABLE is defined so CUDA usage is disabled
+#endif
 
 #if !defined(HEMI_CUDA_DISABLE) && defined(__CUDACC__) // CUDA compiler
 
@@ -34,11 +38,11 @@
   #ifdef __CUDA_ARCH__
     #define HEMI_DEV_CODE                 // to detect device compilation
   #endif
-  
+
   #define HEMI_KERNEL(name)               __global__ void name ## _kernel
   #define HEMI_KERNEL_NAME(name)          name ## _kernel
-  
-  #if defined(DEBUG) || defined(_DEBUG)
+
+  #if defined(DEBUG) || defined(_DEBUG) || defined(HEMI_DEBUG)
     #define HEMI_KERNEL_LAUNCH(name, gridDim, blockDim, sharedBytes, streamId, ...) \
     do {                                                                     \
         name ## _kernel<<< (gridDim), (blockDim), (sharedBytes), (streamId) >>>\
@@ -101,7 +105,7 @@
 
   #define HEMI_LAUNCHABLE
   #define HEMI_LAMBDA
-  #define HEMI_DEV_CALLABLE               
+  #define HEMI_DEV_CALLABLE
   #define HEMI_DEV_CALLABLE_INLINE        inline
   #define HEMI_DEV_CALLABLE_MEMBER
   #define HEMI_DEV_CALLABLE_INLINE_MEMBER inline
@@ -117,8 +121,8 @@
   #define HEMI_DEFINE_EXTERN_CONSTANT(def) extern def ## _hostconst
 
   #undef HEMI_DEV_CONSTANT // requires NVCC, so undefined here!
-  #define HEMI_CONSTANT(name) name ## _hostconst      
-  
+  #define HEMI_CONSTANT(name) name ## _hostconst
+
   #if !defined(HEMI_ALIGN)
 
     #if defined(__GNUC__)
@@ -128,7 +132,7 @@
     #else
       #error "Please provide a definition of HEMI_ALIGN for your host compiler!"
     #endif
-  
+
   #endif
 
 #endif
@@ -142,15 +146,17 @@
 ;
 
 #include "hemi_error.h"
+#include "host_threads.h"
 
 namespace hemi {
 
-    inline hemi::Error_t deviceSynchronize() 
+    inline hemi::Error_t deviceSynchronize()
     {
-#ifdef HEMI_CUDA_COMPILER
+#ifndef HEMI_CUDA_DISABLE
         if (cudaSuccess != checkCuda(cudaDeviceSynchronize()))
-            return hemi::cudaError; 
+            return hemi::cudaError;
 #endif
+        if (hemi::threads::gPool) hemi::threads::gPool->wait();
         return hemi::success;
     }
 

@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
-// 
+//
 // "Hemi" CUDA Portable C/C++ Utilities
-// 
+//
 // Copyright 2012-2015 NVIDIA Corporation
 //
 // License: BSD License, see LICENSE file in Hemi home directory
@@ -9,7 +9,7 @@
 // The home for Hemi is https://github.com/harrism/hemi
 //
 ///////////////////////////////////////////////////////////////////////////////
-// Please see the file README.md (https://github.com/harrism/hemi/README.md) 
+// Please see the file README.md (https://github.com/harrism/hemi/README.md)
 // for full documentation and discussion.
 ///////////////////////////////////////////////////////////////////////////////
 #pragma once
@@ -19,14 +19,19 @@
 
 #include "hemi.h"
 
+#ifndef HEMI_DEV_CODE
+#include "host_threads.h"
+#endif
+
 namespace hemi
 {
-	HEMI_DEV_CALLABLE_INLINE
+    HEMI_DEV_CALLABLE_INLINE
     unsigned int globalThreadIndex() {
     #ifdef HEMI_DEV_CODE
     	return threadIdx.x + blockIdx.x * blockDim.x;
     #else
-    	return 0;
+        if (hemi::threads::gPool) return hemi::threads::gPool->threadIdx();
+        return 0;
     #endif
     }
 
@@ -36,6 +41,7 @@ namespace hemi
     #ifdef HEMI_DEV_CODE
     	return blockDim.x * gridDim.x;
     #else
+        if (hemi::threads::gPool) return hemi::threads::gPool->workerThreads();
     	return 1;
     #endif
     }
@@ -56,6 +62,7 @@ namespace hemi
     #ifdef HEMI_DEV_CODE
     	return threadIdx.x;
     #else
+        if (hemi::threads::gPool) return hemi::threads::gPool->threadIdx();
     	return 0;
     #endif
     }
