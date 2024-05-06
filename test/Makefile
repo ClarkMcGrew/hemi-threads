@@ -30,10 +30,10 @@ CUDA_DIR := /usr/local/cuda
 CPPFLAGS += -isystem $(GTEST_DIR)/include
 
 # Flags passed to the C++ compiler.
-CXXFLAGS += -g -Wall -Wextra -pthread --std=c++11
+CXXFLAGS += -g -Wall -Wextra -pthread --std=c++17
 
 # Flags passed to nvcc compiler.
-NVCCFLAGS += -g -arch=sm_30 --std=c++11 --expt-extended-lambda
+NVCCFLAGS += -g -arch=all --std=c++17 --expt-extended-lambda
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
@@ -94,7 +94,7 @@ test_execution_policy_host.o: test_execution_policy.cpp
 
 test_execution_policy_device.o: test_execution_policy.cpp
 	nvcc -c $(CPPFLAGS) $(NVCCFLAGS) -I$(HEMI_DIR) $^ -o $@
-	
+
 test_launch_device.o: test_launch.cu
 	nvcc -c $(CPPFLAGS) $(NVCCFLAGS) -I$(HEMI_DIR) $^ -o $@
 
@@ -115,7 +115,7 @@ test_array_host.o: test_array.cpp
 
 test_array_device.o: test_array.cpp 
 	nvcc -x cu $(CPPFLAGS) $(NVCCFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include $^ -c -o $@
-	
+
 test_hemi_device: $(TESTS_DEVICE:=.o) gtest_main.a
 	nvcc $^ gtest_main.a -lpthread $(LIB_FLAGS) -o $@
 

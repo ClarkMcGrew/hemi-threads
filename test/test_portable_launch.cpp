@@ -13,10 +13,10 @@ T first(T f, Arguments...) {
 
 template <typename... Arguments>
 struct k {
-	HEMI_DEV_CALLABLE_MEMBER void operator()(Arguments... args) {
-		result = first(args...); //sizeof...(args); 
+	HEMI_DEV_CALLABLE_MEMBER void operator()(Arguments... args) const {
+		result = first(args...); //sizeof...(args);
 		rGDim = 1;//gridDim.x;
-		rBDim = 1;//blockDim.x;			
+		rBDim = 1;//blockDim.x;
 	}
 };
 
