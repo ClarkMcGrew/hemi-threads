@@ -12,6 +12,13 @@
 // Please see the file README.md (https://github.com/harrism/hemi/README.md)
 // for full documentation and discussion.
 ///////////////////////////////////////////////////////////////////////////////
+
+// NOTE: To add this to a class without added unintentional dependencies on
+// the cuda compiler, add
+//
+// namespace hemi {template <typename T> Array;}
+//
+// to your header file.  Only include the file in your implementation file.
 #pragma once
 
 #include "hemi/hemi.h"
