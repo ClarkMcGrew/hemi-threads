@@ -23,7 +23,9 @@ void saxpy(int n, float a, const float *x, float *y)
 Current Version
 ---------------
 
-This is version: 2.0 (HEMI_VERSION == 200000)
+This is version is based on Hemi 2.0 (HEMI_VERSION == 200000) by Mark
+Harris ((https://github.com/harrism/hemi).  All modifications by Clark
+McGrew are release under the MIT license. 
 
 Hemi on github
 --------------
