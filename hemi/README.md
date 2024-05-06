@@ -44,10 +44,6 @@ Hemi 2 requires a host compiler with support for C++11 or later. For CUDA device
 Installing
 ----------
 
-Once you have cloned the source code from github, you need to copy the all of the files in the `./hemi` subdirectory into a `<>/hemi/` wherever you are keeping your project include files.  This is a HEADER-ONLY library, so there is no further installation required.  The files to live in a `hemi` subdirectory and to be included using `#include <hemi/hemi.h>`.
-
-Original Installation Instructions
-----------------------------------
 Once you clone Hemi from Github, you need to sync its submodules in order to use the range helper (`range.hpp`) and to run tests based on the Google test framework. To do so, run the following Git commands in your hemi base directory:
 
     > git submodule init
