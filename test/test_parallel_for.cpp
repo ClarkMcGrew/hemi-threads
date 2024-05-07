@@ -2,68 +2,94 @@
 #include "hemi/parallel_for.h"
 #include <cuda_runtime_api.h>
 
+#ifndef HEMI_DEV_CODE
+// C++ doesn't add atomic_compare_exchange_weak until C++20, so implement
+// a local version using builtins.
+#if defined(__has_builtin)
+#if __has_builtin(__atomic_compare_exchange)
+#define local_atomic_compare_exchange __atomic_compare_exchange
+#define local_order __ATOMIC_ACQUIRE
+#endif
+#elif __GNUC_PREREQ(5,0)
+#define local_atomic_compare_exchange __atomic_compare_exchange
+#define local_order __ATOMIC_ACQUIRE
+#endif
+
+#ifndef local_atomic_compare_exchange
+#error Atomic compare and exchange are not supported by this compiler version
+#endif
+
+template <typename T>
+inline void atomicAdd(T* value, T increment) {
+    T expected = *value;
+    T updated;
+    do {
+        updated = expected + increment;
+    } while (not local_atomic_compare_exchange(value,&expected,&updated,true,
+                                               local_order,local_order));
+}
+#undef local_atomic_compare_exchange
+#undef local_order
+#endif
+
 // Separate function because __device__ lambda can't be declared
 // inside a private member function, and TEST() defines TestBody()
 // private to the test class
-void runParallelFor(int *count, int *gdim, int *bdim) 
+void runParallelFor(int *count, int *gdim, int *bdim)
 {
-	hemi::parallel_for(0, 100, [=] HEMI_LAMBDA (int) {
-		*gdim = hemi::globalBlockCount();
-		*bdim = hemi::localThreadCount();
+    hemi::parallel_for(0, 100, [=] HEMI_LAMBDA (int) {
+        *gdim = hemi::globalBlockCount();
+        *bdim = hemi::localThreadCount();
 
-#ifdef HEMI_DEV_CODE
         atomicAdd(count, 1);
-#else
-        (*count)++;
-#endif
-	});
+
+    });
 }
 
-void runParallelForEP(const hemi::ExecutionPolicy &ep, int *count, int *gdim, int *bdim) 
+void runParallelForEP(const hemi::ExecutionPolicy &ep, int *count, int *gdim, int *bdim)
 {
-	hemi::parallel_for(ep, 0, 100, [=] HEMI_LAMBDA (int) {
-		*gdim = hemi::globalBlockCount();
-		*bdim = hemi::localThreadCount();
 
-#ifdef HEMI_DEV_CODE
+    hemi::parallel_for(ep, 0, 100, [=] HEMI_LAMBDA (int) {
+        *gdim = hemi::globalBlockCount();
+        *bdim = hemi::localThreadCount();
+
         atomicAdd(count, 1);
-#else
-        (*count)++;
-#endif
-	});
+
+    });
 }
 
 class ParallelForTest : public ::testing::Test {
 protected:
   virtual void SetUp() {
 #ifdef HEMI_CUDA_COMPILER
-  	ASSERT_SUCCESS(cudaMalloc(&dCount, sizeof(int)));
-    ASSERT_SUCCESS(cudaMalloc(&dBdim, sizeof(int)));
-	ASSERT_SUCCESS(cudaMalloc(&dGdim, sizeof(int)));
+      ASSERT_SUCCESS(cudaMalloc(&dCount, sizeof(int)));
+      ASSERT_SUCCESS(cudaMalloc(&dBdim, sizeof(int)));
+      ASSERT_SUCCESS(cudaMalloc(&dGdim, sizeof(int)));
 
-	int devId;
-	ASSERT_SUCCESS(cudaGetDevice(&devId));
-	ASSERT_SUCCESS(cudaDeviceGetAttribute(&smCount, cudaDevAttrMultiProcessorCount, devId));
+      int devId;
+      ASSERT_SUCCESS(cudaGetDevice(&devId));
+      ASSERT_SUCCESS(cudaDeviceGetAttribute(&smCount, cudaDevAttrMultiProcessorCount, devId));
 #else
-	dCount = new int;
-	dBdim = new int;
-	dGdim = new int;
+      dCount = new int;
+      dBdim = new int;
+      dGdim = new int;
 
-	smCount = 1;
+      smCount = 1;
 #endif
   }
 
   virtual void TearDown() {
 #ifdef HEMI_CUDA_COMPILER
-  	ASSERT_SUCCESS(cudaFree(dCount));
-  	ASSERT_SUCCESS(cudaFree(dBdim));
-  	ASSERT_SUCCESS(cudaFree(dGdim));
+      ASSERT_SUCCESS(cudaFree(dCount));
+      ASSERT_SUCCESS(cudaFree(dBdim));
+      ASSERT_SUCCESS(cudaFree(dGdim));
 #else
-  	delete dCount;
-  	delete dBdim;
-  	delete dGdim;
+      hemi::deviceSynchronize();
+      delete dCount;
+      delete dBdim;
+      delete dGdim;
 #endif
-  }	
+  }
 
   void Zero() {
 #ifdef HEMI_CUDA_COMPILER
@@ -71,6 +97,7 @@ protected:
     ASSERT_SUCCESS(cudaMemset(dBdim, 0, sizeof(int)));
     ASSERT_SUCCESS(cudaMemset(dGdim, 0, sizeof(int)));
 #else
+    hemi::deviceSynchronize();
     *dCount = 0;
     *dBdim = 0;
     *dGdim = 0;
@@ -83,9 +110,10 @@ protected:
   void CopyBack() {
 #ifdef HEMI_CUDA_COMPILER
     ASSERT_SUCCESS(cudaMemcpy(&count, dCount, sizeof(int), cudaMemcpyDefault));
-	ASSERT_SUCCESS(cudaMemcpy(&bdim, dBdim, sizeof(int), cudaMemcpyDefault));
-	ASSERT_SUCCESS(cudaMemcpy(&gdim, dGdim, sizeof(int), cudaMemcpyDefault));
+    ASSERT_SUCCESS(cudaMemcpy(&bdim, dBdim, sizeof(int), cudaMemcpyDefault));
+    ASSERT_SUCCESS(cudaMemcpy(&gdim, dGdim, sizeof(int), cudaMemcpyDefault));
 #else
+    hemi::deviceSynchronize();
     count = *dCount;
     bdim = *dBdim;
     gdim = *dGdim;
@@ -93,12 +121,12 @@ protected:
   }
 
   int smCount;
-  
+
   int *dCount;
   int *dBdim;
   int *dGdim;
-  
-  int count; 
+
+  int count;
   int bdim;
   int gdim;
 };
@@ -128,7 +156,7 @@ TEST_F(ParallelForTest, AutoConfigMaximalLaunch) {
 #endif
 }
 
-TEST_F(ParallelForTest, ExplicitBlockSize) 
+TEST_F(ParallelForTest, ExplicitBlockSize)
 {
     Zero();
 	hemi::ExecutionPolicy ep;
@@ -141,13 +169,13 @@ TEST_F(ParallelForTest, ExplicitBlockSize)
 	ASSERT_GE(gdim, smCount);
 	ASSERT_EQ(gdim%smCount, 0);
 #ifdef HEMI_CUDA_COMPILER
-	ASSERT_EQ(bdim, 128);	
+	ASSERT_EQ(bdim, 128);
 #else
     ASSERT_EQ(bdim, 1);
 #endif
 }
 
-TEST_F(ParallelForTest, ExplicitGridSize) 
+TEST_F(ParallelForTest, ExplicitGridSize)
 {
     Zero();
 	hemi::ExecutionPolicy ep;
@@ -163,7 +191,7 @@ TEST_F(ParallelForTest, ExplicitGridSize)
 #else
     ASSERT_EQ(gdim, 1);
     ASSERT_EQ(bdim, 1);
-#endif	
+#endif
 }
 
 TEST_F(ParallelForTest, InvalidConfigShouldFail)
