@@ -36,7 +36,6 @@ public:
           mStopSignal = false;
           gThreadIdx = -1;
           if (threads < 1) threads = std::thread::hardware_concurrency()/2;
-          std::cout << "Creating thread pool with " << threads << std::endl;
           for (int i = 0; i< threads; ++i) {
                ++mBusyThreads;
                mWorkerPool.emplace_back(&ThreadPool::workerThread,this,i);
@@ -65,11 +64,11 @@ public:
      }
 
      void wait() {
-          do {
-               std::unique_lock lk(mWorkerMutEx);
-               mWorkerCV.wait_for(lk,std::chrono::milliseconds(100));
-               mKernelCV.notify_all();
-          } while (!mPendingKernels.empty());
+          while (!mPendingKernels.empty()) {
+               std::unique_lock lk(mKernelMutEx);
+               mKernelCV.wait_for(lk,std::chrono::milliseconds(10));
+               lk.unlock();
+          }
      }
 
 private:
@@ -100,10 +99,12 @@ private:
                     if (mStopSignal) return;
                     std::unique_lock lk(mWorkerMutEx);
                     mWorkerCV.wait_for(lk,std::chrono::milliseconds(100));
+                    lk.unlock();
                } while (mBusyThreads > 0);
                {
                     std::lock_guard lock(mKernelMutEx);
                     mPendingKernels.pop_front();
+                    mKernelCV.notify_all();
                }
           }
      }
