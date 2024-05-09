@@ -155,8 +155,12 @@ namespace hemi {
           // memory as invalid.
           T* hostPtr()
           {
-               if (isDeviceValid && !isHostValid) copyDeviceToHost();
-               else if (!isHostAlloced) allocateHost();
+               HEMI_ARRAY_OUTPUT("hostPtr::"
+                                 << " Device: " << isDeviceValid
+                                 << " Host: " << isHostValid);
+               if (!isHostAlloced) allocateHost();
+               if (hemi::threads::gPool) hemi::deviceSynchronize();
+               else if (isDeviceValid && !isHostValid) copyDeviceToHost();
                else assert(isHostValid);
                isDeviceValid = false;
                isHostValid   = true;
@@ -168,6 +172,9 @@ namespace hemi {
           // host memory as invalid.
           T* devicePtr()
           {
+               HEMI_ARRAY_OUTPUT("devicePtr::"
+                                 << " Device: " << isDeviceValid
+                                 << " Host: " << isHostValid);
                if (!isDeviceValid && isHostValid) copyHostToDevice();
                else if (!isDeviceAlloced) allocateDevice();
                else assert(isDeviceValid);
@@ -189,8 +196,14 @@ namespace hemi {
           // the device to the host (if needed).
           const T* readOnlyHostPtr() const
           {
-               if (isDeviceValid && !isHostValid) copyDeviceToHost();
+               HEMI_ARRAY_OUTPUT("readOnlyHostPtr::"
+                                 << " Device: " << isDeviceValid
+                                 << " Host: " << isHostValid);
+               if (!isHostAlloced) allocateHost();
+               if (hemi::threads::gPool) hemi::deviceSynchronize();
+               else if (isDeviceValid && !isHostValid) copyDeviceToHost();
                else assert(isHostValid);
+               isHostValid = true;
                return hPtr;
           }
 
@@ -198,6 +211,9 @@ namespace hemi {
           // the host to the device (if needed).
           const T* readOnlyDevicePtr() const
           {
+               HEMI_ARRAY_OUTPUT("readOnlyDevicePtr::"
+                                 << " Device: " << isDeviceValid
+                                 << " Host: " << isHostValid);
                if (!isDeviceValid && isHostValid) copyHostToDevice();
                else assert(isDeviceValid);
                return dPtr;
@@ -215,7 +231,11 @@ namespace hemi {
           // the device and mark the device memory as invalid.
           T* writeOnlyHostPtr()
           {
+               HEMI_ARRAY_OUTPUT("writeOnlyHostPtr::"
+                                 << " Device: " << isDeviceValid
+                                 << " Host: " << isHostValid);
                if (!isHostAlloced) allocateHost();
+               if (hemi::threads::gPool) hemi::deviceSynchronize();
                isDeviceValid = false;
                isHostValid   = true;
                return hPtr;
@@ -225,6 +245,9 @@ namespace hemi {
           // the host and mark the host memory as invalid.
           T* writeOnlyDevicePtr()
           {
+               HEMI_ARRAY_OUTPUT("writeOnlyDevicePtr::"
+                                 << " Device: " << isDeviceValid
+                                 << " Host: " << isHostValid);
                if (!isDeviceAlloced) allocateDevice();
                isDeviceValid = true;
                isHostValid   = false;
@@ -309,22 +332,25 @@ namespace hemi {
 
           void copyHostToDevice() const
           {
+               HEMI_ARRAY_OUTPUT("copyHostToDevice");
 #ifndef HEMI_CUDA_DISABLE
                assert(isHostAlloced);
                if (!isDeviceAlloced) allocateDevice();
-               HEMI_ARRAY_OUTPUT("copyHostToDevice");
                checkCuda( cudaMemcpy(dPtr,
                                      hPtr,
                                      nSize * sizeof(T),
                                      cudaMemcpyHostToDevice) );
 #else
-               deviceSynchronize();
+               std::cerr << "ERROR: copyHostToDevice without cuda" << std::endl;
+               throw std::runtime_error("copyHostToDevice without cuda");
 #endif
                isDeviceValid = true;
           }
 
           void copyDeviceToHost() const
           {
+               HEMI_ARRAY_OUTPUT("copyDeviceToHost");
+
 #ifndef HEMI_CUDA_DISABLE
 #ifndef HEMI_DISABLE_THREADS
                std::lock_guard<std::mutex> guard(deviceLock());
@@ -334,13 +360,13 @@ namespace hemi {
 #ifndef HEMI_DISABLE_THREADS
                if (isHostValid) return; // done while waiting for lock
 #endif
-               HEMI_ARRAY_OUTPUT("copyDeviceToHost");
                checkCuda( cudaMemcpy(hPtr,
                                      dPtr,
                                      nSize * sizeof(T),
                                      cudaMemcpyDeviceToHost) );
 #else
-               deviceSynchronize();
+               std::cerr << "ERROR: copyDeviceToHost without cuda" << std::endl;
+               throw std::runtime_error("copyDeviceToHost without cuda");
 #endif
                isHostValid = true;
           }
