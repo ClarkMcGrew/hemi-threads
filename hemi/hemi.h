@@ -152,11 +152,12 @@ namespace hemi {
 
     inline hemi::Error_t deviceSynchronize()
     {
-#ifndef HEMI_CUDA_DISABLE
-        if (cudaSuccess != checkCuda(cudaDeviceSynchronize()))
-            return hemi::cudaError;
-#endif
         if (hemi::threads::gPool) hemi::threads::gPool->wait();
+#ifndef HEMI_CUDA_DISABLE
+        else if (cudaSuccess != checkCuda(cudaDeviceSynchronize())) {
+             return hemi::cudaError;
+        }
+#endif
         return hemi::success;
     }
 
