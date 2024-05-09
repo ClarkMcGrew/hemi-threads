@@ -15,11 +15,10 @@
 #pragma once
 
 #include "kernel.h"
+#include "host_threads.h"
 
 #ifdef HEMI_CUDA_COMPILER
 #include "configure.h"
-#else
-#include "host_threads.h"
 #endif
 
 namespace hemi {
@@ -34,21 +33,8 @@ inline int hostThreads{0};
 template <typename Function, typename... Arguments>
 void launch(Function f, Arguments... args)
 {
-#ifdef HEMI_CUDA_COMPILER
     ExecutionPolicy p;
     launch(p, f, args...);
-#else
-    HEMI_LAUNCH_OUTPUT("Host launch (no GPU used)");
-    if (hemi::hostThreads == 1) {
-       f(args...);
-       return;
-    }
-    if (!hemi::threads::gPool) {
-        hemi::threads::gPool
-            = std::make_unique<hemi::threads::ThreadPool>(hemi::hostThreads);
-    }
-    hemi::threads::gPool->kernel(f, args...);
-#endif
 }
 
 //
@@ -62,19 +48,36 @@ void launch(const ExecutionPolicy &policy, Function f, Arguments... args)
     checkCuda(configureGrid(p, Kernel<Function, Arguments...>));
     HEMI_LAUNCH_OUTPUT("hemi::launch with grid size of " << p.getGridSize()
                        << " and block size of " << p.getBlockSize());
-    if (p.getGridSize() > 0 && p.getBlockSize() > 0) {
+    if (p.getGridSize() > 0 && p.getBlockSize() > 0 && !hemi::threads::gPool) {
         Kernel<<<p.getGridSize(),
              p.getBlockSize(),
              p.getSharedMemBytes(),
              p.getStream()>>>(f, args...);
+        return;
     }
+#ifndef HEMI_ALLOW_MISSING_DEVICE
     else {
         HEMI_LAUNCH_OUTPUT("hemi::launch: CUDA without available GPU");
         throw std::runtime_error("hemi::launch: GPU not available");
     }
+#endif
 #else
-    HEMI_LAUNCH_OUTPUT("Host launch (no GPU used)");
-    launch(f, args...);
+#ifndef HEMI_DISABLE_THREADS
+    if (!hemi::threads::gPool and hemi::hostThreads != 1) {
+        hemi::threads::gPool
+            = std::make_unique<hemi::threads::ThreadPool>(hemi::hostThreads);
+        hemi::hostThreads = hemi::threads::gPool->workerThreads();
+    }
+#endif
+    if (!hemi::threads::gPool) {
+       HEMI_LAUNCH_OUTPUT("Host launch (no GPU used) --"
+                           << " direct call");
+       f(args...);
+       return;
+    }
+    HEMI_LAUNCH_OUTPUT("Host launch (no GPU used) --"
+                       << " thread pool: " << hemi::hostThreads);
+    hemi::threads::gPool->kernel(f, args...);
 #endif
 }
 
@@ -85,21 +88,8 @@ void launch(const ExecutionPolicy &policy, Function f, Arguments... args)
 template <typename... Arguments>
 void cudaLaunch(void(*f)(Arguments... args), Arguments... args)
 {
-#ifdef HEMI_CUDA_COMPILER
     ExecutionPolicy p;
     cudaLaunch(p, f, args...);
-#else
-    HEMI_LAUNCH_OUTPUT("Host launch (no GPU used)");
-    if (hemi::hostThreads == 1) {
-       f(args...);
-       return;
-    }
-    if (!hemi::threads::gPool) {
-        hemi::threads::gPool
-            = std::make_unique<hemi::threads::ThreadPool>(hemi::hostThreads);
-    }
-    hemi::threads::gPool->kernel(f, args...);
-#endif
 }
 
 //
@@ -113,19 +103,36 @@ void cudaLaunch(const ExecutionPolicy &policy, void (*f)(Arguments...), Argument
     checkCuda(configureGrid(p, f));
     HEMI_LAUNCH_OUTPUT("cudaLaunch: with grid size of " << p.getGridSize()
                        << " and block size of " << p.getBlockSize());
-    if (p.getGridSize() > 0 && p.getBlockSize() > 0) {
+    if (p.getGridSize() > 0 && p.getBlockSize() > 0 && !hemi::threads::gPool) {
         f<<<p.getGridSize(),
             p.getBlockSize(),
             p.getSharedMemBytes(),
             p.getStream()>>>(args...);
+        return;
     }
+#ifndef HEMI_ALLOW_MISSING_DEVICE
     else {
         HEMI_LAUNCH_OUTPUT("hemi::cudaLaunch: CUDA without available GPU");
         throw std::runtime_error("cudaLaunch: GPU not available");
     }
+#endif
 #else
-    HEMI_LAUNCH_OUTPUT("Host launch (no GPU used)");
-    cudaLaunch(f, args...);
+#ifndef HEMI_DISABLE_THREADS
+    if (!hemi::threads::gPool and hemi::hostThreads != 1) {
+        hemi::threads::gPool
+            = std::make_unique<hemi::threads::ThreadPool>(hemi::hostThreads);
+        hemi::hostThreads = hemi::threads::gPool->workerThreads();
+    }
+#endif
+    if (!hemi::threads::gPool) {
+       HEMI_LAUNCH_OUTPUT("Host cudaLaunch (no GPU used) --"
+                           << " direct call");
+       f(args...);
+       return;
+    }
+    HEMI_LAUNCH_OUTPUT("Host cudaLaunch (no GPU used) --"
+                       << " thread pool: " << hemi::hostThreads);
+    hemi::threads::gPool->kernel(f, args...);
 #endif
 }
 
