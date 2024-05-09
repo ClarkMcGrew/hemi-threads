@@ -22,6 +22,7 @@
 #endif
 
 #include "kernel.h"
+#include "execution_policy.h"
 
 namespace hemi {
 
