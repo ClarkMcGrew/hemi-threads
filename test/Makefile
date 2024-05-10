@@ -42,12 +42,14 @@ NVCCFLAGS += $(HEMI_DEBUG_FLAGS)
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
-TESTS_HOST = test_execution_policy_host \
+TESTS_HOST = test_externals_host \
+	test_execution_policy_host \
 	test_portable_launch_host \
 	test_parallel_for_host \
 	test_array_host
 
-TESTS_DEVICE = test_execution_policy_device \
+TESTS_DEVICE = test_externals_device \
+	test_execution_policy_device \
 	test_launch_device \
 	test_portable_launch_device \
 	test_parallel_for_device \
@@ -93,6 +95,12 @@ gtest_main.a : gtest-all.o gtest_main.o
 	$(AR) $(ARFLAGS) $@ $^
 
 # Build tests
+
+test_externals_host.o: test_externals.cpp $(HEMI_HEADERS)
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include $< -o $@
+
+test_externals_device.o: test_externals.cpp $(HEMI_HEADERS)
+	nvcc -c $(CPPFLAGS) $(NVCCFLAGS) -I$(HEMI_DIR) $< -o $@
 
 test_execution_policy_host.o: test_execution_policy.cpp $(HEMI_HEADERS)
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include $< -o $@
