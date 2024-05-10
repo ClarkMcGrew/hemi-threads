@@ -43,6 +43,7 @@
   #define HEMI_KERNEL_NAME(name)          name ## _kernel
 
   #if defined(DEBUG) || defined(_DEBUG) || defined(HEMI_DEBUG)
+    #warning HEMI debug compilation uses synchronous device operations
     #define HEMI_KERNEL_LAUNCH(name, gridDim, blockDim, sharedBytes, streamId, ...) \
     do {                                                                     \
         name ## _kernel<<< (gridDim), (blockDim), (sharedBytes), (streamId) >>>\
