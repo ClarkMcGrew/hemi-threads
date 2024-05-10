@@ -1,7 +1,7 @@
 # operating system
 HOST_OS := $(shell uname -s 2>/dev/null | tr "[:upper:]" "[:lower:]")
 
-# architecture 
+# architecture
 ARCH := $(shell getconf LONG_BIT)
 
 NVCC := nvcc
@@ -23,6 +23,7 @@ endif
 GTEST_DIR = googletest
 HEMI_DIR = ../
 CUDA_DIR := /usr/local/cuda
+HEMI_DEBUG_FLAGS := # -DHEMI_LAUNCH_DEBUG -DHEMI_ARRAY_DEBUG
 
 # Flags passed to the preprocessor.
 # Set Google Test's header directory as a system directory, such that
@@ -30,10 +31,14 @@ CUDA_DIR := /usr/local/cuda
 CPPFLAGS += -isystem $(GTEST_DIR)/include
 
 # Flags passed to the C++ compiler.
-CXXFLAGS += -g -Wall -Wextra -pthread --std=c++17
+CXXFLAGS += -g -Wall -Wextra --std=c++17
+CXXFLAGS += $(HEMI_DEBUG_FLAGS)
 
 # Flags passed to nvcc compiler.
-NVCCFLAGS += -g -arch=all --std=c++17 --expt-extended-lambda
+NVCCFLAGS += -g -arch=native --std=c++17
+NVCCFLAGS += --extended-lambda
+NVCCFLAGS += -DHEMI_CUDA_CHECK_ERRORS
+NVCCFLAGS += $(HEMI_DEBUG_FLAGS)
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
@@ -53,7 +58,7 @@ TESTS_DEVICE = test_execution_policy_device \
 GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
                 $(GTEST_DIR)/include/gtest/internal/*.h
 
-HEMI_HEADERS = $(HEMI_DIR)/hemi/*.h
+HEMI_HEADERS = $(HEMI_DIR)/hemi/*.h $(HEMI_DIR)/hemi/*.inl
 
 # House-keeping build targets.
 
@@ -89,36 +94,35 @@ gtest_main.a : gtest-all.o gtest_main.o
 
 # Build tests
 
-test_execution_policy_host.o: test_execution_policy.cpp
-	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include $^ -o $@
+test_execution_policy_host.o: test_execution_policy.cpp $(HEMI_HEADERS)
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include $< -o $@
 
-test_execution_policy_device.o: test_execution_policy.cpp
-	nvcc -c $(CPPFLAGS) $(NVCCFLAGS) -I$(HEMI_DIR) $^ -o $@
+test_execution_policy_device.o: test_execution_policy.cpp $(HEMI_HEADERS)
+	nvcc -c $(CPPFLAGS) $(NVCCFLAGS) -I$(HEMI_DIR) $< -o $@
 
-test_launch_device.o: test_launch.cu
-	nvcc -c $(CPPFLAGS) $(NVCCFLAGS) -I$(HEMI_DIR) $^ -o $@
+test_launch_device.o: test_launch.cu $(HEMI_HEADERS)
+	nvcc -c $(CPPFLAGS) $(NVCCFLAGS) -I$(HEMI_DIR) $< -o $@
 
-test_portable_launch_host.o: test_portable_launch.cpp
-	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include  $^ -o $@	
+test_portable_launch_host.o: test_portable_launch.cpp $(HEMI_HEADERS)
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include  $< -o $@
 
-test_portable_launch_device.o: test_portable_launch.cpp
-	nvcc -x cu $(CPPFLAGS) $(NVCCFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include $^ -c -o $@
+test_portable_launch_device.o: test_portable_launch.cpp $(HEMI_HEADERS)
+	nvcc -x cu $(CPPFLAGS) $(NVCCFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include $< -c -o $@
 
-test_parallel_for_host.o: test_parallel_for.cpp
-	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include $^ -o $@
+test_parallel_for_host.o: test_parallel_for.cpp $(HEMI_HEADERS)
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include $< -o $@
 
-test_parallel_for_device.o: test_parallel_for.cpp
-	nvcc -x cu $(CPPFLAGS) $(NVCCFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include $^ -c -o $@
+test_parallel_for_device.o: test_parallel_for.cpp $(HEMI_HEADERS)
+	nvcc -x cu $(CPPFLAGS) $(NVCCFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include $< -c -o $@
 
-test_array_host.o: test_array.cpp
-	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include $^ -o $@
+test_array_host.o: test_array.cpp $(HEMI_HEADERS)
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include $< -o $@
 
-test_array_device.o: test_array.cpp 
-	nvcc -x cu $(CPPFLAGS) $(NVCCFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include $^ -c -o $@
+test_array_device.o: test_array.cpp  $(HEMI_HEADERS)
+	nvcc -x cu $(CPPFLAGS) $(NVCCFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include $< -c -o $@
 
 test_hemi_device: $(TESTS_DEVICE:=.o) gtest_main.a
 	nvcc $^ gtest_main.a -lpthread $(LIB_FLAGS) -o $@
 
 test_hemi_host: $(TESTS_HOST:=.o) gtest_main.a
 	nvcc $^ gtest_main.a -lpthread $(LIB_FLAGS) -o $@
-
