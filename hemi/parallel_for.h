@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
-// 
+//
 // "Hemi" CUDA Portable C/C++ Utilities
-// 
+//
 // Copyright 2012-2015 NVIDIA Corporation
 //
 // License: BSD License, see LICENSE file in Hemi home directory
@@ -9,10 +9,20 @@
 // The home for Hemi is https://github.com/harrism/hemi
 //
 ///////////////////////////////////////////////////////////////////////////////
-// Please see the file README.md (https://github.com/harrism/hemi/README.md) 
+// Please see the file README.md (https://github.com/harrism/hemi/README.md)
 // for full documentation and discussion.
 ///////////////////////////////////////////////////////////////////////////////
 #pragma once
+
+#include "hemi.h"
+#include "launch.h"
+#include "configure.h"
+#include "grid_stride_range.h"
+
+#if not defined(__CUDACC_EXTENDED_LAMBDA__) && defined(HEMI_CUDA_COMPILER)
+#warning NVCC compilation with --extended-lambda required by parallel_for.h
+#else
+#define HEMI_PARALLEL_FOR_ENABLED
 
 #include "hemi.h"
 #include "launch.h"
@@ -23,7 +33,7 @@
 // TODO, add range-based version
 // TODO, possibly add custom termination condition?
 
-namespace hemi 
+namespace hemi
 {
 	class ExecutionPolicy; // forward decl
 
@@ -53,3 +63,4 @@ namespace hemi
 		});
 	}
 }
+#endif
