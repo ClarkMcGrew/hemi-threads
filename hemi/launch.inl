@@ -23,10 +23,6 @@
 
 namespace hemi {
 
-// Number of threads to be used on a host.  Defaults the std::threads::hardware_concurrency
-
-inline int hostThreads{0};
-
 //
 // Automatic Launch functions for closures (functor or lambda)
 //
@@ -75,10 +71,10 @@ void launch([[maybe_unused]] const ExecutionPolicy &policy, Function f, Argument
     } while (false);
 #else
 #ifndef HEMI_DISABLE_THREADS
-    if (!hemi::threads::gPool and hemi::hostThreads != 1) {
-        hemi::threads::gPool
-            = std::make_unique<hemi::threads::ThreadPool>(hemi::hostThreads);
-        hemi::hostThreads = hemi::threads::gPool->workerThreads();
+    if (!hemi::threads::gPool and hemi::threads::number != 1) {
+        hemi::threads::gPool.reset(new hemi::threads::ThreadPool(
+                                       hemi::threads::number));
+        hemi::threads::number = hemi::threads::gPool->workerThreads();
     }
 #endif
     if (!hemi::threads::gPool) {
@@ -88,7 +84,7 @@ void launch([[maybe_unused]] const ExecutionPolicy &policy, Function f, Argument
        return;
     }
     HEMI_LAUNCH_OUTPUT("Host launch (no GPU used) --"
-                       << " thread pool: " << hemi::hostThreads);
+                       << " thread pool: " << hemi::threads::number);
     hemi::threads::gPool->kernel(f, args...);
 #endif
 }
@@ -142,10 +138,10 @@ void cudaLaunch([[maybe_unused]] const ExecutionPolicy &policy, void (*f)(Argume
     } while (false);
 #else
 #ifndef HEMI_DISABLE_THREADS
-    if (!hemi::threads::gPool and hemi::hostThreads != 1) {
-        hemi::threads::gPool
-            = std::make_unique<hemi::threads::ThreadPool>(hemi::hostThreads);
-        hemi::hostThreads = hemi::threads::gPool->workerThreads();
+    if (!hemi::threads::gPool and hemi::threads::number != 1) {
+        hemi::threads::gPool.reset(new hemi::threads::ThreadPool(
+                                       hemi::threads::number));
+        hemi::threads::number = hemi::threads::gPool->workerThreads();
     }
 #endif
     if (!hemi::threads::gPool) {
@@ -155,12 +151,9 @@ void cudaLaunch([[maybe_unused]] const ExecutionPolicy &policy, void (*f)(Argume
        return;
     }
     HEMI_LAUNCH_OUTPUT("Host cudaLaunch (no GPU used) --"
-                       << " thread pool: " << hemi::hostThreads);
+                       << " thread pool: " << hemi::threads::number);
     hemi::threads::gPool->kernel(f, args...);
 #endif
 }
 
-inline void setHostThreads(int i) {
-   hemi::hostThreads = i;
-}
 } // namespace hemi
