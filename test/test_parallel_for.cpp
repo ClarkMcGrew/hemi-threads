@@ -37,6 +37,7 @@ inline void atomicAdd(T* value, T increment) {
 // private to the test class
 void runParallelFor(int instance, int *count, int *gdim, int *bdim)
 {
+#ifdef HEMI_PARALLEL_FOR_ENABLED
     hemi::parallel_for(0, 100, [=] HEMI_LAMBDA (int) {
         *gdim = hemi::globalBlockCount();
         *bdim = hemi::localThreadCount();
@@ -44,11 +45,15 @@ void runParallelFor(int instance, int *count, int *gdim, int *bdim)
         atomicAdd(count, 1);
 
     });
+#else
+#warning hemi::parallel_for not enabled causing test to fail.
+    throw std::runtime_error("hemi::parallel_for not enabled");
+#endif
 }
 
 void runParallelForEP(int instance, const hemi::ExecutionPolicy &ep, int *count, int *gdim, int *bdim)
 {
-
+#ifdef HEMI_PARALLEL_FOR_ENABLED
     hemi::parallel_for(ep, 0, 100, [=] HEMI_LAMBDA (int) {
         *gdim = hemi::globalBlockCount();
         *bdim = hemi::localThreadCount();
@@ -56,6 +61,10 @@ void runParallelForEP(int instance, const hemi::ExecutionPolicy &ep, int *count,
         atomicAdd(count, 1);
 
     });
+#else
+#warning hemi::parallel_for not enabled causing test to fail.
+    throw std::runtime_error("hemi::parallel_for not enabled");
+#endif
 }
 
 class ParallelForTest : public ::testing::Test {
@@ -135,8 +144,8 @@ TEST_F(ParallelForTest, ComputesCorrectSum) {
     Zero();
     runParallelFor(1, dCount, dGdim, dBdim);
     CopyBack();
-
     ASSERT_EQ(count, 100);
+
 }
 
 
