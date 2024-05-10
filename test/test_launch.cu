@@ -5,10 +5,10 @@
 #define ASSERT_FAILURE(res) ASSERT_NE(cudaSuccess, (res));
 
 // for testing hemi::launch()
-struct Kernel {
+struct KernelClass {
 	template <typename... Arguments>
 	HEMI_DEV_CALLABLE_MEMBER void operator()(int *count, int *bdim, int *gdim, Arguments... args) {
-		*count = sizeof...(args); 
+		*count = sizeof...(args);
 		*bdim = blockDim.x;
 		*gdim = gridDim.x;
 	}
@@ -17,7 +17,7 @@ struct Kernel {
 // for testing hemi::cudaLaunch()
 template <typename... Arguments>
 HEMI_LAUNCHABLE void KernelFunc(int *count, int *bdim, int *gdim, Arguments... args) {
-	Kernel k;
+	KernelClass k;
 	k(count, bdim, gdim, args...);
 }
 
@@ -37,25 +37,25 @@ protected:
   	cudaFree(dCount);
   	cudaFree(dBdim);
   	cudaFree(dGdim);
-  }	
+  }
 
-  Kernel kernel;
+  KernelClass kernel;
   int smCount;
-  
+
   int *dCount;
 
   int *dBdim;
   int *dGdim;
-  
+
   int count;
-  
+
   int bdim;
   int gdim;
 };
 
 
 TEST_F(LaunchTest, CorrectVariadicParams) {
-	hemi::launch(kernel, dCount, dBdim, dGdim, 1);
+        hemi::launch(kernel, dCount, dBdim, dGdim, 1);
 	ASSERT_SUCCESS(cudaDeviceSynchronize());
 	ASSERT_SUCCESS(cudaMemcpy(&count, dCount, sizeof(int), cudaMemcpyDefault));
 	ASSERT_EQ(count, 1);
@@ -82,7 +82,7 @@ TEST_F(LaunchTest, AutoConfigMaximalLaunch) {
 	ASSERT_GE(bdim, 32);
 }
 
-TEST_F(LaunchTest, ExplicitBlockSize) 
+TEST_F(LaunchTest, ExplicitBlockSize)
 {
 	hemi::ExecutionPolicy ep;
 	ep.setBlockSize(128);
@@ -93,10 +93,10 @@ TEST_F(LaunchTest, ExplicitBlockSize)
 
 	ASSERT_GE(gdim, smCount);
 	ASSERT_EQ(gdim%smCount, 0);
-	ASSERT_EQ(bdim, 128);	
+	ASSERT_EQ(bdim, 128);
 }
 
-TEST_F(LaunchTest, ExplicitGridSize) 
+TEST_F(LaunchTest, ExplicitGridSize)
 {
 	hemi::ExecutionPolicy ep;
 	ep.setGridSize(100);
@@ -106,7 +106,7 @@ TEST_F(LaunchTest, ExplicitGridSize)
 	ASSERT_SUCCESS(cudaMemcpy(&gdim, dGdim, sizeof(int), cudaMemcpyDefault));
 
 	ASSERT_EQ(gdim, 100);
-	ASSERT_GE(bdim, 32);	
+	ASSERT_GE(bdim, 32);
 }
 
 TEST_F(LaunchTest, InvalidConfigShouldFail)
@@ -114,15 +114,26 @@ TEST_F(LaunchTest, InvalidConfigShouldFail)
 	// Fail due to block size too large
 	hemi::ExecutionPolicy ep;
 	ep.setBlockSize(10000);
-	hemi::launch(ep, kernel, dCount, dBdim, dGdim);
-	ASSERT_FAILURE(checkCudaErrors());
+        try {
+            hemi::launch(ep, kernel, dCount, dBdim, dGdim);
+            ASSERT_FAILURE(checkCudaErrors());
+        }
+        catch (...) {
+            ASSERT_SUCCESS(checkCudaErrors());
+        }
+
 
 	// Fail due to excessive shared memory size
 	ep.setBlockSize(0);
 	ep.setGridSize(0);
 	ep.setSharedMemBytes(1000000);
-	hemi::launch(ep, kernel, dCount, dBdim, dGdim);
-	ASSERT_FAILURE(checkCudaErrors());
+        try {
+            hemi::launch(ep, kernel, dCount, dBdim, dGdim);
+            ASSERT_FAILURE(checkCudaErrors());
+        }
+        catch (...) {
+            ASSERT_SUCCESS(checkCudaErrors());
+        }
 }
 
 TEST_F(LaunchTest, CorrectVariadicParams_cudaLaunch) {
@@ -153,7 +164,7 @@ TEST_F(LaunchTest, AutoConfigMaximalLaunch_cudaLaunch) {
 	ASSERT_GE(bdim, 32);
 }
 
-TEST_F(LaunchTest, ExplicitBlockSize_cudaLaunch) 
+TEST_F(LaunchTest, ExplicitBlockSize_cudaLaunch)
 {
 	hemi::ExecutionPolicy ep;
 	ep.setBlockSize(128);
@@ -164,10 +175,10 @@ TEST_F(LaunchTest, ExplicitBlockSize_cudaLaunch)
 
 	ASSERT_GE(gdim, smCount);
 	ASSERT_EQ(gdim%smCount, 0);
-	ASSERT_EQ(bdim, 128);	
+	ASSERT_EQ(bdim, 128);
 }
 
-TEST_F(LaunchTest, ExplicitGridSize_cudaLaunch) 
+TEST_F(LaunchTest, ExplicitGridSize_cudaLaunch)
 {
 	hemi::ExecutionPolicy ep;
 	ep.setGridSize(100);
@@ -177,7 +188,7 @@ TEST_F(LaunchTest, ExplicitGridSize_cudaLaunch)
 	ASSERT_SUCCESS(cudaMemcpy(&gdim, dGdim, sizeof(int), cudaMemcpyDefault));
 
 	ASSERT_EQ(gdim, 100);
-	ASSERT_GE(bdim, 32);	
+	ASSERT_GE(bdim, 32);
 }
 
 TEST_F(LaunchTest, InvalidConfigShouldFail_cudaLaunch)
@@ -185,13 +196,23 @@ TEST_F(LaunchTest, InvalidConfigShouldFail_cudaLaunch)
 	// Fail due to block size too large
 	hemi::ExecutionPolicy ep;
 	ep.setBlockSize(10000);
-	hemi::cudaLaunch(ep, KernelFunc, dCount, dBdim, dGdim);
-	ASSERT_FAILURE(checkCudaErrors());
+        try {
+            hemi::cudaLaunch(ep, KernelFunc, dCount, dBdim, dGdim);
+            ASSERT_FAILURE(checkCudaErrors());
+        }
+        catch (...) {
+            ASSERT_SUCCESS(checkCudaErrors());
+        }
 
 	// Fail due to excessive shared memory size
 	ep.setBlockSize(0);
 	ep.setGridSize(0);
 	ep.setSharedMemBytes(1000000);
-	hemi::cudaLaunch(ep, KernelFunc, dCount, dBdim, dGdim);
-	ASSERT_FAILURE(checkCudaErrors());
+        try {
+            hemi::cudaLaunch(ep, KernelFunc, dCount, dBdim, dGdim);
+            ASSERT_FAILURE(checkCudaErrors());
+        }
+        catch (...) {
+            ASSERT_SUCCESS(checkCudaErrors());
+        }
 }
