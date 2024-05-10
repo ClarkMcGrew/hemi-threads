@@ -42,7 +42,7 @@ public:
           }
           // Wait for all the threads to start
           while (mBusyThreads > 0) {
-               std::unique_lock lk(mWorkerMutEx);
+               std::unique_lock<std::mutex> lk(mWorkerMutEx);
                mWorkerCV.wait_for(lk,std::chrono::seconds(1));
           }
           mMainThread = std::make_unique<std::thread>(&ThreadPool::mainThread,this);
@@ -53,7 +53,7 @@ public:
      int workerThreads() const {return mWorkerPool.size();}
 
      void add(std::function<void()> k) {
-          std::lock_guard lock(mKernelMutEx);
+          std::lock_guard<std::mutex> lock(mKernelMutEx);
           mPendingKernels.push_back(k);
           mKernelCV.notify_all();
      }
@@ -65,7 +65,7 @@ public:
 
      void wait() {
           while (!mPendingKernels.empty()) {
-               std::unique_lock lk(mKernelMutEx);
+               std::unique_lock<std::mutex> lk(mKernelMutEx);
                mKernelCV.wait_for(lk,std::chrono::milliseconds(10));
                lk.unlock();
           }
@@ -76,7 +76,7 @@ private:
           gThreadIdx = i;
           if (--mBusyThreads < 1) mWorkerCV.notify_all();
           do {
-               std::unique_lock lk(mStartMutEx);
+               std::unique_lock<std::mutex> lk(mStartMutEx);
                mStartCV.wait(lk);
                lk.unlock();
                if (not mStopSignal and !mPendingKernels.empty()) mPendingKernels.front()();
@@ -89,7 +89,7 @@ private:
           while (true) {
                while (mPendingKernels.empty()) {
                     if (mStopSignal) return;
-                    std::unique_lock lk(mKernelMutEx);
+                    std::unique_lock<std::mutex> lk(mKernelMutEx);
                     mKernelCV.wait_for(lk,std::chrono::milliseconds(1000));
                     lk.unlock();
                }
@@ -97,12 +97,12 @@ private:
                mStartCV.notify_all();
                do {
                     if (mStopSignal) return;
-                    std::unique_lock lk(mWorkerMutEx);
+                    std::unique_lock<std::mutex> lk(mWorkerMutEx);
                     mWorkerCV.wait_for(lk,std::chrono::milliseconds(100));
                     lk.unlock();
                } while (mBusyThreads > 0);
                {
-                    std::lock_guard lock(mKernelMutEx);
+                    std::lock_guard<std::mutex> lock(mKernelMutEx);
                     mPendingKernels.pop_front();
                     mKernelCV.notify_all();
                }
