@@ -41,26 +41,39 @@ void launch(Function f, Arguments... args)
 // Launch with explicit (or partial) configuration
 //
 template <typename Function, typename... Arguments>
-void launch(const ExecutionPolicy &policy, Function f, Arguments... args)
+void launch([[maybe_unused]] const ExecutionPolicy &policy, Function f, Arguments... args)
 {
 #ifdef HEMI_CUDA_COMPILER
     ExecutionPolicy p = policy;
     checkCuda(configureGrid(p, Kernel<Function, Arguments...>));
     HEMI_LAUNCH_OUTPUT("hemi::launch with grid size of " << p.getGridSize()
                        << " and block size of " << p.getBlockSize());
-    if (p.getGridSize() > 0 && p.getBlockSize() > 0 && !hemi::threads::gPool) {
+    do {
+#ifdef HEMI_CUDA_CHECK_ERRORS
+#warning HEMI::launch compiled with HEMI_CUDA_CHECK_ERRORS
+        if (p.getGridSize() < 1) {
+            std::cerr << "hemi::launch: Grid size is zero"
+                      << " (GPU may not be available)" << std::endl;
+            throw std::runtime_error("hemi::launch: Invalid grid size");
+        }
+        if (p.getBlockSize() < 1) {
+            std::cerr << "hemi::launch: Grid size is zero"
+                      << " (GPU may not be available)" << std::endl;
+            throw std::runtime_error("hemi::launch: Invalid block size");
+        }
+#endif
         Kernel<<<p.getGridSize(),
              p.getBlockSize(),
              p.getSharedMemBytes(),
              p.getStream()>>>(f, args...);
-        return;
-    }
-#ifndef HEMI_ALLOW_MISSING_DEVICE
-    else {
-        HEMI_LAUNCH_OUTPUT("hemi::launch: CUDA without available GPU");
-        throw std::runtime_error("hemi::launch: GPU not available");
-    }
+#ifdef HEMI_CUDA_CHECK_ERRORS
+        if (cudaSuccess != checkCudaErrors()) {
+            std::cerr << "hemi::launch: Kernel launch error" << std::endl;
+            throw std::runtime_error("hemi::launch: Kernel launch error");
+        }
 #endif
+        return;
+    } while (false);
 #else
 #ifndef HEMI_DISABLE_THREADS
     if (!hemi::threads::gPool and hemi::hostThreads != 1) {
@@ -96,26 +109,38 @@ void cudaLaunch(void(*f)(Arguments... args), Arguments... args)
 // Launch __global__ kernel function with explicit configuration
 //
 template <typename... Arguments>
-void cudaLaunch(const ExecutionPolicy &policy, void (*f)(Arguments...), Arguments... args)
+void cudaLaunch([[maybe_unused]] const ExecutionPolicy &policy, void (*f)(Arguments...), Arguments... args)
 {
 #ifdef HEMI_CUDA_COMPILER
     ExecutionPolicy p = policy;
     checkCuda(configureGrid(p, f));
     HEMI_LAUNCH_OUTPUT("cudaLaunch: with grid size of " << p.getGridSize()
                        << " and block size of " << p.getBlockSize());
-    if (p.getGridSize() > 0 && p.getBlockSize() > 0 && !hemi::threads::gPool) {
+    do {
+#ifdef HEMI_CUDA_CHECK_ERRORS
+        if (p.getGridSize() < 1) {
+            std::cerr << "hemi::cudaLaunch: Grid size is zero"
+                      << " (GPU may not be available)" << std::endl;
+            throw std::runtime_error("hemi::cudaLaunch: Invalid grid size");
+        }
+        if (p.getBlockSize() < 1) {
+            std::cerr << "hemi::cudaLaunch: Grid size is zero"
+                      << " (GPU may not be available)" << std::endl;
+            throw std::runtime_error("hemi::cudaLaunch: Invalid block size");
+        }
+#endif
         f<<<p.getGridSize(),
             p.getBlockSize(),
             p.getSharedMemBytes(),
             p.getStream()>>>(args...);
-        return;
-    }
-#ifndef HEMI_ALLOW_MISSING_DEVICE
-    else {
-        HEMI_LAUNCH_OUTPUT("hemi::cudaLaunch: CUDA without available GPU");
-        throw std::runtime_error("cudaLaunch: GPU not available");
-    }
+#ifdef HEMI_CUDA_CHECK_ERRORS
+        if (cudaSuccess != checkCudaErrors()) {
+            std::cerr << "hemi::cudaLaunch: Kernel launch error" << std::endl;
+            throw std::runtime_error("hemi::cudaLaunch: Kernel launch error");
+        }
 #endif
+       return;
+    } while (false);
 #else
 #ifndef HEMI_DISABLE_THREADS
     if (!hemi::threads::gPool and hemi::hostThreads != 1) {
