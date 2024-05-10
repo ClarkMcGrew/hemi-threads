@@ -1,6 +1,7 @@
 #include "hemi_test.h"
 #include "hemi/array.h"
-#include "hemi/parallel_for.h"
+#include "hemi/launch.h"
+#include "hemi/grid_stride_range.h"
 #include <algorithm>
 
 TEST(ArrayTest, CreatesAndFillsArrayOnHost)
@@ -19,11 +20,19 @@ TEST(ArrayTest, CreatesAndFillsArrayOnHost)
 	}
 }
 
-template <typename T>
-void fillOnDevice(T* ptr, int n, T val) {
-	hemi::parallel_for(0, n, [=] HEMI_LAMBDA (int i) {
-		ptr[i] = val;
-	});
+namespace {
+    // A function to be used as the kernel on either the CPU or GPU.  This
+    // must be valid CUDA coda.
+    HEMI_KERNEL_FUNCTION(HEMIFill, float* ptr, int N, float val) {
+        for (int i : hemi::grid_stride_range(0,N)) {
+            ptr[i] = val;
+        }
+    }
+}
+
+void fillOnDevice(float* ptr, int n, float val) {
+    HEMIFill fillArray;
+    hemi::launch(fillArray,ptr,n,val);
 }
 
 TEST(ArrayTest, CreatesAndFillsArrayOnDevice)
@@ -43,11 +52,19 @@ TEST(ArrayTest, CreatesAndFillsArrayOnDevice)
 	ASSERT_SUCCESS(hemi::deviceSynchronize());
 }
 
+namespace {
+    // A function to be used as the kernel on either the CPU or GPU.  This
+    // must be valid CUDA coda.
+    HEMI_KERNEL_FUNCTION(HEMISquare, float* ptr, int N) {
+        for (int i : hemi::grid_stride_range(0,N)) {
+            ptr[i] = ptr[i]*ptr[i];
+        }
+    }
+}
+
 void squareOnDevice(hemi::Array<float> &a) {
-	float *ad = a.ptr();
-	hemi::parallel_for(0, a.size(), [=] HEMI_LAMBDA (int i) {
-		ad[i] = ad[i]*ad[i];
-	});
+        HEMISquare squareArray;
+        hemi::launch(squareArray,a.ptr(),a.size());
 }
 
 TEST(ArrayTest, FillsOnHostModifiesOnDevice)
