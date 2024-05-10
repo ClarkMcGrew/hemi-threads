@@ -50,7 +50,6 @@ void launch([[maybe_unused]] const ExecutionPolicy &policy, Function f, Argument
                        << " and block size of " << p.getBlockSize());
     do {
 #ifdef HEMI_CUDA_CHECK_ERRORS
-#warning HEMI::launch compiled with HEMI_CUDA_CHECK_ERRORS
         if (p.getGridSize() < 1) {
             std::cerr << "hemi::launch: Grid size is zero"
                       << " (GPU may not be available)" << std::endl;
