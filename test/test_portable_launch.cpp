@@ -15,8 +15,10 @@ template <typename... Arguments>
 struct k {
 	HEMI_DEV_CALLABLE_MEMBER void operator()(Arguments... args) const {
 		result = first(args...); //sizeof...(args);
+#ifdef HEMI_DEV_CODE
 		rGDim = 1;//gridDim.x;
 		rBDim = 1;//blockDim.x;
+#endif
 	}
 };
 
