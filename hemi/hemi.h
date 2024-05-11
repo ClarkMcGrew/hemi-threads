@@ -30,6 +30,25 @@
 #warning HEMI: HEMI_CUDA_DISABLE is defined so CUDA usage is disabled
 #endif
 
+// The flag that is defined in the file where global variables should be
+// defined.  This is only needed with the feature flag __cpp_inline_variables
+// (i.e. pre-C++17) is not defined.  It can only occur in *ONE* C++ source
+// file (this is required to meet the One Definition Rule).
+#ifdef HEMI_DEFINITION_COMPILATION
+#ifdef __cpp_inline_variables
+#undef HEMI_DEFINITION_COMPILATION   // Not required so undefine
+#else
+#warning HEMI_DEFINITION_COMPILATION is set.  Globals will be defined.
+#endif
+#endif
+
+// Helper macro for defining functors that can be launched as kernels
+#define HEMI_KERNEL_FUNCTION(name, ...)                              \
+  struct name {                                                      \
+     HEMI_DEV_CALLABLE_MEMBER void operator()(__VA_ARGS__) const;    \
+  };                                                                 \
+  HEMI_DEV_CALLABLE_MEMBER void name::operator()(__VA_ARGS__) const
+
 #if !defined(HEMI_CUDA_DISABLE) && defined(__CUDACC__) // CUDA compiler
 
   #define HEMI_CUDA_COMPILER              // to detect CUDACC compilation
@@ -138,13 +157,25 @@
 
 #endif
 
-// Helper macro for defining device functors that can be launched as kernels
-#define HEMI_KERNEL_FUNCTION(name, ...)                \
-  struct name {                                             \
-      HEMI_DEV_CALLABLE_MEMBER void operator()(__VA_ARGS__) const;  \
-  };                                                        \
-  HEMI_DEV_CALLABLE_MEMBER void name::operator()(__VA_ARGS__) const
-;
+#if defined(__cpp_inline_variables)
+// Global inline variables are supported, so use them.  This lets the linker
+// choose which instance of the variable will be created in the executable.
+// See host_threads.h for a usage example.
+#define HEMI_INLINE_VARIABLE(declaration,init) inline declaration init
+#elif defined(HEMI_DEFINITION_COMPILATION)
+// This is the "definition" complation unit, so global variables are defined
+// and initialized.
+#define HEMI_INLINE_VARIABLE(declaration,init) declaration init
+#else
+// Inline variables are not supported.  That means that the global variables
+// cannot be initialized here, and that the will have to be defined once in
+// the executable (usually the main program source file).  This is done by
+// defining HEMI_DEFINITION_COMPILATION in *ONE* c++ source file that will be
+// lined into the executable (or added to the library).  This is mostly
+// relevant for C++11 and C++14 since C++17 and later support inline
+// variables.
+#define HEMI_INLINE_VARIABLE(declaration,init) extern declaration
+#endif
 
 #include "hemi_error.h"
 #include "host_threads.h"

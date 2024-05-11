@@ -18,34 +18,10 @@ namespace hemi { namespace threads {
 
 class ThreadPool;
 
-#ifdef __cpp_inline_variables
-// Global inline variables are supported, so use them.  This lets the linker
-// choose which instance of the variable will be created in the executable.
-inline int number{0};
-inline thread_local int gThreadIdx{-1};
-inline std::unique_ptr<hemi::threads::ThreadPool> gPool;
-#define HEMI_EXTERNAL_DEFINITIONS // NOOP for modern compilers
-
-#else
-// Inline variables are not supported.  That means that the global variables
-// cannot be initialized here, and that the will have to be defined once
-// in the executable (usually the main program source file).  This is done
-// by adding
-//
-// HEMI_EXTERNAL_DEFINITION;
-//
-// to *ONE* c++ source file that will be lined into the executable (or added
-// to the library.  This is mostly relevant for C++11 and C++14 since C++17
-// and later support inline variables.
-#warning cpp_inline_variables not support before C++17.  See hosts_threads.h
-extern int number;
-extern thread_local int gThreadIdx;
-extern std::unique_ptr<hemi::threads::ThreadPool> gPool;
-#define HEMI_EXTERNAL_DEFINITIONS                                       \
-    int hemi::threads::number{0};                                       \
-    thread_local int hemi::threads::gThreadIdx{-1};                     \
-    std::unique_ptr<hemi::threads::ThreadPool> hemi::threads::gPool
-#endif
+// Declared like this to be compatible with C++11 which is missing inline variables.
+HEMI_INLINE_VARIABLE(int number, {0});
+HEMI_INLINE_VARIABLE(thread_local int gThreadIdx, {-1});
+HEMI_INLINE_VARIABLE(std::unique_ptr<hemi::threads::ThreadPool> gPool,{});
 
 class ThreadPool {
 public:
