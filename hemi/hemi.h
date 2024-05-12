@@ -34,11 +34,11 @@
 // defined.  This is only needed with the feature flag __cpp_inline_variables
 // (i.e. pre-C++17) is not defined.  It can only occur in *ONE* C++ source
 // file (this is required to meet the One Definition Rule).
-#ifdef HEMI_DEFINITION_COMPILATION
+#ifdef HEMI_COMPILE_DEFINITIONS
 #ifdef __cpp_inline_variables
-#undef HEMI_DEFINITION_COMPILATION   // Not required so undefine
+#undef HEMI_COMPILE_DEFINITIONS   // Not required so undefine
 #else
-#warning HEMI_DEFINITION_COMPILATION is set.  Globals will be defined.
+#warning HEMI_COMPILE_DEFINITIONS is set.  Globals will be defined.
 #endif
 #endif
 
@@ -162,7 +162,7 @@
 // choose which instance of the variable will be created in the executable.
 // See host_threads.h for a usage example.
 #define HEMI_INLINE_VARIABLE(declaration,init) inline declaration init
-#elif defined(HEMI_DEFINITION_COMPILATION)
+#elif defined(HEMI_COMPILE_DEFINITIONS)
 // This is the "definition" complation unit, so global variables are defined
 // and initialized.
 #define HEMI_INLINE_VARIABLE(declaration,init) declaration init
@@ -170,7 +170,7 @@
 // Inline variables are not supported.  That means that the global variables
 // cannot be initialized here, and that the will have to be defined once in
 // the executable (usually the main program source file).  This is done by
-// defining HEMI_DEFINITION_COMPILATION in *ONE* c++ source file that will be
+// defining HEMI_COMPILE_DEFINITIONS in *ONE* c++ source file that will be
 // lined into the executable (or added to the library).  This is mostly
 // relevant for C++11 and C++14 since C++17 and later support inline
 // variables.
