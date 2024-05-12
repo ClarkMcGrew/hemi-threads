@@ -61,7 +61,7 @@ Features
 GPU Lambdas and Parallel For
 ----------------------------
 
-CUDA 7.5 provides an experimental feature, "GPU Lambdas", which enables C++11 Lambda functions with `__device__` annotation to be defined in host code and passed to kernels running on the device. Hemi 2 leverages this feature to provide the `hemi::parallel_for` function which, when compiled for the GPU, launches a parallel kernel which executes the provided GPU lambda function as the body of a parallel loop. When compiled for the CPU, the lambda is executed as the body of a sequential CPU loop. This makes parallel functions nearly as easy to write as a for loop, as the following code shows:
+After CUDA 7.5 "GPU Lambdas" are provided (either as an experimental feature or part of the main compiler) which enables C++11 Lambda functions with `__device__` annotation to be defined in host code and passed to kernels running on the device. Hemi 2 leverages this feature to provide the `hemi::parallel_for` function which, when compiled for the GPU, launches a parallel kernel which executes the provided GPU lambda function as the body of a parallel loop. When compiled for the CPU, the lambda is executed as the body of a sequential CPU loop. This makes parallel functions nearly as easy to write as a for loop, as the following code shows:
 
     parallel_for(0, 100, [] HEMI_LAMBDA (int i) { 
         printf("%d\n", i); 
@@ -75,7 +75,7 @@ GPU Lambdas can also be launched directly on the GPU using `hemi::launch`:
             hemi::globalThreadCount());
     });
 
-To launch lambda expressions on the GPU using `hemi::launch()` or `hemi::parallel_for()`, Hemi requires [CUDA 7.5](http://developer.nvidia.com/cuda-toolkit) or later with experimental support for "extended lambdas" (enabled using the `nvcc` command line option `--expt-extended-lambda`).
+To launch lambda expressions on the GPU using `hemi::launch()` or `hemi::parallel_for()`, Hemi requires [CUDA 7.5](http://developer.nvidia.com/cuda-toolkit) or later with experimental support for "extended lambdas" (enabled using the `nvcc` command line option `--expt-extended-lambda`, or `--extended-lambda` with newer versions).
 
 Portable Parallel Execution
 ---------------------------
@@ -273,6 +273,12 @@ To explicitly access the device version of a constant, use `HEMI_DEV_CONSTANT`. 
 
     cudaMemcpyToSymbol(HEMI_DEV_CONSTANT(softeningSquared), 
                        &ss, sizeof(float), 0, cudaMemcpyHostToDevice)
+
+Parallelism on the Host using std::thread
+-----------------------------------------
+
+The C++ concurrency features are used to transparently implement parallelism on the host when a GPU is not available.  The number of threads can be specified using `hemi::threads::setHostThreads(int)` which can be called anytime before the first kernel is launched.  If the number of threads is not specified, the number of threads will default to half of std::hardware_concurrency().
+
 
 Note: Non-Inline Functions and Methods
 --------------------------------------
