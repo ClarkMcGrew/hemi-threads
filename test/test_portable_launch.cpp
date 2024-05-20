@@ -1,5 +1,8 @@
 #include "gtest/gtest.h"
 #include "hemi/launch.h"
+#include "hemi/device_api.h"
+#include "hemi/grid_stride_range.h"
+#include "unistd.h"
 
 HEMI_MEM_DEVICE int result;
 HEMI_MEM_DEVICE int rGDim;
@@ -22,7 +25,23 @@ struct k {
 	}
 };
 
+struct slowKernel {
+    HEMI_DEV_CALLABLE_MEMBER void operator()(int increment) const {
+        // printf("start %d\n", hemi::globalThreadIndex());
+        double sum = 0.0;
+        for (int i : hemi::grid_stride_range(0,1000)) {
+            for (int j = 0; j < 10000; ++j)  sum = sum + increment;
+            // if (sum >10) printf("slow %d %d %f\n", hemi::globalThreadIndex(), i, sum);
+        }
+    }
+};
+
 TEST(PortableLaunchTest, KernelFunction_AutoConfig) {
-	k<int> kernel;
-	hemi::launch(kernel, 1);
+    k<int> kernel;
+    hemi::launch(kernel, 1);
+}
+
+TEST(PortableLaunchTest, KernelFunction_Slow) {
+    slowKernel kernel;
+    hemi::launch(kernel, 1);
 }
