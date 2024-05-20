@@ -34,6 +34,17 @@ HEMI_INLINE_VARIABLE(int number, {0});                    // Access with hemi::t
 HEMI_INLINE_VARIABLE(thread_local int gThreadIdx, {-1});  // Access with hemi::threads::gPool->threadIdx()
 HEMI_INLINE_VARIABLE(std::unique_ptr<hemi::threads::ThreadPool> gPool,{});  // Internal access only
 
+// Set the number of threads to be used by the CPU.  This must be used before
+// the first "launch", and later uses are ignored.
+inline void setHostThreads(int i) {
+     hemi::threads::number = i;
+}
+
+// Check if the host is using threading for HEMI
+inline bool isHostThreaded() {
+     return (hemi::threads::gPool != nullptr);
+}
+
 class WorkerStatus {
 public:
      WorkerStatus(std::thread* t): mThread(t) {}
@@ -202,10 +213,6 @@ private:
      std::mutex mWorkerMutEx;
      std::condition_variable mWorkerCV;
 };
-}
-
-inline void setHostThreads(int i) {
-     hemi::threads::number = i;
 }
 
 }
