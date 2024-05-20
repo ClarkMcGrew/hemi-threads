@@ -1,48 +1,32 @@
+#include "test_CAS.h"
 #include "hemi_test.h"
 #include "hemi/parallel_for.h"
 #include <cuda_runtime_api.h>
 
 #ifndef HEMI_DEV_CODE
-// C++ doesn't add atomic_compare_exchange_weak until C++20, so implement
-// a local version using builtins.
-#if defined(__has_builtin)
-#if __has_builtin(__atomic_compare_exchange)
-#define local_atomic_compare_exchange __atomic_compare_exchange
-#define local_order __ATOMIC_ACQUIRE
-#endif
-#elif __GNUC_PREREQ(5,0)
-#define local_atomic_compare_exchange __atomic_compare_exchange
-#define local_order __ATOMIC_ACQUIRE
-#endif
-
-#ifndef local_atomic_compare_exchange
-#error Atomic compare and exchange are not supported by this compiler version
-#endif
-
-template <typename T>
-inline void atomicAdd(T* value, T increment) {
-    T expected = *value;
-    T updated;
+inline void hostAtomicAdd(int* value, int increment) {
+    int expected = *value;
+    int updated;
     do {
         updated = expected + increment;
-    } while (not local_atomic_compare_exchange(value,&expected,&updated,true,
-                                               local_order,local_order));
+    } while (not test_CAS_int(value,&expected,updated));
 }
-#undef local_atomic_compare_exchange
-#undef local_order
 #endif
 
 // Separate function because __device__ lambda can't be declared
 // inside a private member function, and TEST() defines TestBody()
 // private to the test class
-void runParallelFor(int instance, int *count, int *gdim, int *bdim)
+void runParallelFor([[maybe_unused]] int instance, int loop, int *count, int *gdim, int *bdim)
 {
 #ifdef HEMI_PARALLEL_FOR_ENABLED
-    hemi::parallel_for(0, 100, [=] HEMI_LAMBDA (int) {
+    hemi::parallel_for(0, loop, [=] HEMI_LAMBDA (int i) {
         *gdim = hemi::globalBlockCount();
         *bdim = hemi::localThreadCount();
-
+#ifndef HEMI_DEV_CODE
+        hostAtomicAdd(count,1);
+#else
         atomicAdd(count, 1);
+#endif
 
     });
 #else
@@ -51,14 +35,18 @@ void runParallelFor(int instance, int *count, int *gdim, int *bdim)
 #endif
 }
 
-void runParallelForEP(int instance, const hemi::ExecutionPolicy &ep, int *count, int *gdim, int *bdim)
+void runParallelForEP([[maybe_unused]] int instance, const hemi::ExecutionPolicy &ep, int loop, int *count, int *gdim, int *bdim)
 {
 #ifdef HEMI_PARALLEL_FOR_ENABLED
-    hemi::parallel_for(ep, 0, 100, [=] HEMI_LAMBDA (int) {
+    hemi::parallel_for(ep, 0, loop, [=] HEMI_LAMBDA (int) {
         *gdim = hemi::globalBlockCount();
         *bdim = hemi::localThreadCount();
 
+#ifndef HEMI_DEV_CODE
+        hostAtomicAdd(count,1);
+#else
         atomicAdd(count, 1);
+#endif
 
     });
 #else
@@ -142,16 +130,16 @@ protected:
 
 TEST_F(ParallelForTest, ComputesCorrectSum) {
     Zero();
-    runParallelFor(1, dCount, dGdim, dBdim);
+    int loops = 1000;
+    runParallelFor(1, loops, dCount, dGdim, dBdim);
     CopyBack();
-    ASSERT_EQ(count, 100);
-
+    ASSERT_EQ(count, loops);
 }
 
 
 TEST_F(ParallelForTest, AutoConfigMaximalLaunch) {
     Zero();
-    runParallelFor(2, dCount, dGdim, dBdim);
+    runParallelFor(2, 1000, dCount, dGdim, dBdim);
     ASSERT_SUCCESS(cudaDeviceSynchronize());
 
     CopyBack();
@@ -170,7 +158,7 @@ TEST_F(ParallelForTest, ExplicitBlockSize)
     Zero();
 	hemi::ExecutionPolicy ep;
 	ep.setBlockSize(128);
-	runParallelForEP(1, ep, dCount, dGdim, dBdim);
+	runParallelForEP(1, ep, 1000, dCount, dGdim, dBdim);
 	ASSERT_SUCCESS(hemi::deviceSynchronize());
 
     CopyBack();
@@ -189,7 +177,7 @@ TEST_F(ParallelForTest, ExplicitGridSize)
     Zero();
 	hemi::ExecutionPolicy ep;
 	ep.setGridSize(100);
-	runParallelForEP(2, ep, dCount, dGdim, dBdim);
+	runParallelForEP(2, ep, 1000, dCount, dGdim, dBdim);
 	ASSERT_SUCCESS(cudaDeviceSynchronize());
 
     CopyBack();
@@ -210,7 +198,7 @@ TEST_F(ParallelForTest, InvalidConfigShouldFail)
 	hemi::ExecutionPolicy ep;
 	ep.setBlockSize(10000);
         try {
-            runParallelForEP(3, ep, dCount, dGdim, dBdim);
+            runParallelForEP(3, ep, 1000, dCount, dGdim, dBdim);
 #ifdef HEMI_CUDA_COMPILER
             ASSERT_FAILURE(checkCudaErrors());
 #endif
@@ -226,7 +214,7 @@ TEST_F(ParallelForTest, InvalidConfigShouldFail)
 	ep.setGridSize(0);
 	ep.setSharedMemBytes(1000000);
         try {
-            runParallelForEP(4, ep, dCount, dGdim, dBdim);
+            runParallelForEP(4, ep, 1000, dCount, dGdim, dBdim);
 #ifdef HEMI_CUDA_COMPILER
             ASSERT_FAILURE(checkCudaErrors());
 #endif
