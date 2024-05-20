@@ -72,6 +72,8 @@ void launch([[maybe_unused]] const ExecutionPolicy &policy, Function f, Argument
 #else
 #ifndef HEMI_DISABLE_THREADS
     if (!hemi::threads::gPool and hemi::threads::number != 1) {
+        HEMI_LAUNCH_OUTPUT("Host launch (no GPU used) --"
+                           << " create thread pool: " << hemi::threads::number);
         hemi::threads::gPool.reset(new hemi::threads::ThreadPool(
                                        hemi::threads::number));
         hemi::threads::number = hemi::threads::gPool->workerThreads();
