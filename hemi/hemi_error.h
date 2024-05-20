@@ -58,6 +58,6 @@ namespace hemi {
         return result;
     }
 #else  // HEMI_CUDA_DISABLE
-inline hemi::Error_t checkCuda(hemi::Error_t result) {return hemi::success;}
+inline hemi::Error_t checkCuda([[maybe_unused]] hemi::Error_t result) {return hemi::success;}
 inline hemi::Error_t checkCudaErrors() {return hemi::success;}
 #endif // HEMI_CUDA_DISABLE
