@@ -23,7 +23,14 @@ endif
 GTEST_DIR = googletest
 HEMI_DIR = ../
 CUDA_DIR := /usr/local/cuda
-HEMI_DEBUG_FLAGS := # -DHEMI_LAUNCH_DEBUG -DHEMI_ARRAY_DEBUG
+
+# Uncomment to debug with HEMI host threading disabled
+# HEMI_DEBUG_FLAGS+=-DHEMI_DISABLE_THREADS
+
+# Uncomment to add lots of debugging output to different sub-systems
+# HEMI_DEBUG_FLAGS+=-DHEMI_LAUNCH_DEBUG
+# HEMI_DEBUG_FLAGS+=-DHEMI_THREAD_DEBUG
+# HEMI_DEBUG_FLAGS+=-DHEMI_ARRAY_DEBUG
 
 # Flags passed to the preprocessor.
 # Set Google Test's header directory as a system directory, such that
@@ -32,6 +39,7 @@ CPPFLAGS += -isystem $(GTEST_DIR)/include
 
 # Flags passed to the C++ compiler.
 CXXFLAGS += -g -Wall -Wextra --std=c++17
+CXXFLAGS += -DHEMI_CUDA_DISABLE
 CXXFLAGS += $(HEMI_DEBUG_FLAGS)
 
 # Flags passed to nvcc compiler.
@@ -42,7 +50,8 @@ NVCCFLAGS += $(HEMI_DEBUG_FLAGS)
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
-TESTS_HOST = test_externals_host \
+TESTS_HOST = test_CAS \
+	test_externals_host \
 	test_execution_policy_host \
 	test_portable_launch_host \
 	test_parallel_for_host \
@@ -96,6 +105,9 @@ gtest_main.a : gtest-all.o gtest_main.o
 
 # Build tests
 
+test_CAS_host.o : test_CAS.c test_CAS.h
+	$(CC) -c $< -o $@
+
 test_externals_host.o: test_externals.cpp $(HEMI_HEADERS)
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include $< -o $@
 
@@ -133,4 +145,4 @@ test_hemi_device: $(TESTS_DEVICE:=.o) gtest_main.a
 	nvcc $^ gtest_main.a -lpthread $(LIB_FLAGS) -o $@
 
 test_hemi_host: $(TESTS_HOST:=.o) gtest_main.a
-	nvcc $^ gtest_main.a -lpthread $(LIB_FLAGS) -o $@
+	$(CXX) $^ gtest_main.a -lpthread $(LIB_FLAGS) -o $@
