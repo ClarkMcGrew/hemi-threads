@@ -16,13 +16,13 @@ int test_CAS_double(double *variable, double *expected, double update) {
 #elif defined(__has_builtin) && __has_builtin(__atomic_compare_exchange)
 #warning test_CAS -- Using builtin __atomic_compare_exchange
      return __atomic_compare_exchange(
-          variable, expected, update,
+          variable, expected, &update, 0,
           __ATOMIC_ACQUIRE,
           __ATOMIC_ACQUIRE);
 #elif __GNUC_PREREQ(5,0)
 #warning test_CAS -- Using GCC >5 builtin __atomic_compare_exchange
      return __atomic_compare_exchange(
-          variable, expected, update,
+          variable, expected, &update, 0,
           __ATOMIC_ACQUIRE,
           __ATOMIC_ACQUIRE);
 #else
