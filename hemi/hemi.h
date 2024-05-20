@@ -194,3 +194,52 @@ namespace hemi {
     }
 
 } // namespace hemi
+
+#ifdef HEMI_CUDA_DISABLE
+namespace hemi {
+    inline bool deviceAvailable(bool dump = false) {
+         if (dump) {
+              std::cout << "HEMI DEVICE: No device" << std::endl;
+         }
+         return false;
+    }
+}
+#else
+#include <cuda_runtime_api.h>
+namespace hemi {
+    inline bool deviceAvailable(bool dump = false) {
+         int devId;
+         cudaError_t status = cudaGetDevice(&devId);
+         if (status != cudaSuccess) return false;
+
+         cudaDeviceProp prop;
+         status = cudaGetDeviceProperties(&prop, devId);
+         if (status != cudaSuccess) return false;
+
+         if (dump) {
+              std::cout << "HEMI DEVICE:     " << prop.name << std::endl;
+              std::cout << "HEMI GLOBAL MEM: " << prop.totalGlobalMem << std::endl;
+              std::cout << "HEMI PROCESSORS: " << prop.multiProcessorCount << std::endl;
+              std::cout << "HEMI SHARED MEM: " << prop.sharedMemPerBlock << std::endl;
+              std::cout << "HEMI REGISTERS:  " << prop.regsPerBlock << std::endl;
+              std::cout << "HEMI WARP:       " << prop.warpSize << std::endl;
+              std::cout << "HEMI MEM PITCH:  " << prop.memPitch << std::endl;
+              std::cout << "HEMI THREADS:    " << prop.maxThreadsPerBlock << std::endl;
+              std::cout << "HEMI THREAD DIM: " << prop.maxThreadsDim[0]
+                        << " " << prop.maxThreadsDim[1]
+                        << " " << prop.maxThreadsDim[2] << std::endl;
+              std::cout << "HEMI MAX GRID:   " << prop.maxGridSize[0]
+                        << " " << prop.maxGridSize[1]
+                        << " " << prop.maxGridSize[2] << std::endl;
+              std::cout << "HEMI CLOCK:      " << prop.clockRate << std::endl;
+              std::cout << "HEMI CONST MEM:  " << prop.totalConstMem << std::endl;
+              std::cout << "HEMI COMPUTE:    " << prop.major << "." << prop.minor << std::endl;
+         }
+
+         if (prop.totalGlobalMem < 1) return false;
+         if (prop.multiProcessorCount < 1) return false;
+         if (prop.maxThreadsPerBlock < 1) return false;
+         return true;
+    }
+} // namespace hemi
+#endif
