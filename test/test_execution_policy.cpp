@@ -7,7 +7,7 @@ using namespace hemi;
 // Automatic to Full Manual spectrum
 TEST(ExecutionPolicyTest, StateReflectsConfiguration) {
 	// Defaults: fully automatic
-	ExecutionPolicy p; 
+	ExecutionPolicy p;
     int configState = p.getConfigState();
     EXPECT_EQ (ExecutionPolicy::Automatic,  configState);
     EXPECT_NE (ExecutionPolicy::FullManual, configState);
@@ -136,7 +136,7 @@ TEST(ExecutionPolicyTest, StateReflectsConfiguration) {
     EXPECT_NE (ExecutionPolicy::FullManual, configState);
     EXPECT_NE (ExecutionPolicy::Automatic, configState);
     EXPECT_NE (0, configState & ExecutionPolicy::SharedMem);
-    
+
     // Setting 0 grid or block size makes them *Automatic*
     EXPECT_EQ (0, configState & ExecutionPolicy::BlockSize);
     EXPECT_EQ (0, configState & ExecutionPolicy::GridSize);
@@ -161,4 +161,8 @@ TEST(ExecutionPolicyTest, StateReflectsConfiguration) {
     // Setting stream (trivial)
     p.setStream(1);
     EXPECT_EQ(1, p.getStream());
+}
+
+TEST(ExecutionPolicyTest, DeviceAvailability) {
+    hemi::deviceAvailable(true);
 }
