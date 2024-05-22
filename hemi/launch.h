@@ -15,6 +15,7 @@
 #pragma once
 
 #ifdef HEMI_LAUNCH_DEBUG
+#warning hemi::launch -- Compiled with debugging
 #include <iostream>
 #define HEMI_LAUNCH_OUTPUT(arg) std::cout << arg << std::endl
 #else

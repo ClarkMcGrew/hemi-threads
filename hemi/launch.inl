@@ -70,18 +70,21 @@ void launch([[maybe_unused]] const ExecutionPolicy &policy, Function f, Argument
         return;
     } while (false);
 #else
-#ifndef HEMI_DISABLE_THREADS
-    if (!hemi::threads::gPool and hemi::threads::number != 1) {
+#ifndef HEMI_THREADS_DISABLE
+    if (!hemi::threads::gPool and hemi::threads::number != 0) {
         HEMI_LAUNCH_OUTPUT("Host launch (no GPU used) --"
                            << " create thread pool: " << hemi::threads::number);
         hemi::threads::gPool.reset(new hemi::threads::ThreadPool(
                                        hemi::threads::number));
         hemi::threads::number = hemi::threads::gPool->workerThreads();
     }
+#else
+#warning hemi::threads -- Threads are disabled
 #endif
     if (!hemi::threads::gPool) {
        HEMI_LAUNCH_OUTPUT("Host launch (no GPU used) --"
-                           << " direct call");
+                           << " direct call (thread pool: "
+                              << hemi::threads::number << ")");
        f(args...);
        return;
     }
@@ -139,7 +142,7 @@ void cudaLaunch([[maybe_unused]] const ExecutionPolicy &policy, void (*f)(Argume
        return;
     } while (false);
 #else
-#ifndef HEMI_DISABLE_THREADS
+#ifndef HEMI_THREADS_DISABLE
     if (!hemi::threads::gPool and hemi::threads::number != 1) {
         hemi::threads::gPool.reset(new hemi::threads::ThreadPool(
                                        hemi::threads::number));
