@@ -4,6 +4,12 @@
 #include "hemi/grid_stride_range.h"
 #include "unistd.h"
 
+#ifdef HEMI_CUDA_DISABLE
+#define PortableLaunchTest PortableLaunchTestHost
+#else
+#define PortableLaunchTest PortableLaunchTestDevice
+#endif
+
 HEMI_MEM_DEVICE int result;
 HEMI_MEM_DEVICE int rGDim;
 HEMI_MEM_DEVICE int rBDim;

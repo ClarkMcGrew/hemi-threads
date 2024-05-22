@@ -4,6 +4,12 @@
 #include "hemi/grid_stride_range.h"
 #include <algorithm>
 
+#ifdef HEMI_CUDA_DISABLE
+#define ArrayTest ArrayTestHost
+#else
+#define ArrayTest ArrayTestDevice
+#endif
+
 TEST(ArrayTest, CreatesAndFillsArrayOnHost)
 {
 	const int n = 50;

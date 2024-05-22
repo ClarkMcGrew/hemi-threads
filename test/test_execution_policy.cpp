@@ -3,6 +3,12 @@
 
 using namespace hemi;
 
+#ifdef HEMI_CUDA_DISABLE
+#define ExecutionPolicyTest ExecutionPolicyTestHost
+#else
+#define ExecutionPolicyTest ExecutionPolicyTestDevice
+#endif
+
 // Ensure we are setting appropriate level of configuration
 // Automatic to Full Manual spectrum
 TEST(ExecutionPolicyTest, StateReflectsConfiguration) {
@@ -159,8 +165,8 @@ TEST(ExecutionPolicyTest, StateReflectsConfiguration) {
 	EXPECT_EQ(0, configState & ExecutionPolicy::BlockSize);
 
     // Setting stream (trivial)
-    p.setStream(1);
-    EXPECT_EQ(1, p.getStream());
+    p.setStream((hemiStream_t) 1);
+    EXPECT_EQ((hemiStream_t) 1, p.getStream());
 }
 
 TEST(ExecutionPolicyTest, DeviceAvailability) {

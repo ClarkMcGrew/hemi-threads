@@ -21,7 +21,7 @@ HEMI_LAUNCHABLE void KernelFunc(int *count, int *bdim, int *gdim, Arguments... a
 	k(count, bdim, gdim, args...);
 }
 
-class LaunchTest : public ::testing::Test {
+class LaunchTestDevice : public ::testing::Test {
 protected:
   virtual void SetUp() {
   	cudaMalloc(&dCount, sizeof(int));
@@ -54,7 +54,7 @@ protected:
 };
 
 
-TEST_F(LaunchTest, CorrectVariadicParams) {
+TEST_F(LaunchTestDevice, CorrectVariadicParams) {
         hemi::launch(kernel, dCount, dBdim, dGdim, 1);
 	ASSERT_SUCCESS(cudaDeviceSynchronize());
 	ASSERT_SUCCESS(cudaMemcpy(&count, dCount, sizeof(int), cudaMemcpyDefault));
@@ -71,7 +71,7 @@ TEST_F(LaunchTest, CorrectVariadicParams) {
 	ASSERT_EQ(count, 5);
 }
 
-TEST_F(LaunchTest, AutoConfigMaximalLaunch) {
+TEST_F(LaunchTestDevice, AutoConfigMaximalLaunch) {
 	hemi::launch(kernel, dCount, dBdim, dGdim);
 	ASSERT_SUCCESS(cudaDeviceSynchronize());
 	ASSERT_SUCCESS(cudaMemcpy(&bdim, dBdim, sizeof(int), cudaMemcpyDefault));
@@ -82,7 +82,7 @@ TEST_F(LaunchTest, AutoConfigMaximalLaunch) {
 	ASSERT_GE(bdim, 32);
 }
 
-TEST_F(LaunchTest, ExplicitBlockSize)
+TEST_F(LaunchTestDevice, ExplicitBlockSize)
 {
 	hemi::ExecutionPolicy ep;
 	ep.setBlockSize(128);
@@ -96,7 +96,7 @@ TEST_F(LaunchTest, ExplicitBlockSize)
 	ASSERT_EQ(bdim, 128);
 }
 
-TEST_F(LaunchTest, ExplicitGridSize)
+TEST_F(LaunchTestDevice, ExplicitGridSize)
 {
 	hemi::ExecutionPolicy ep;
 	ep.setGridSize(100);
@@ -109,7 +109,7 @@ TEST_F(LaunchTest, ExplicitGridSize)
 	ASSERT_GE(bdim, 32);
 }
 
-TEST_F(LaunchTest, InvalidConfigShouldFail)
+TEST_F(LaunchTestDevice, InvalidConfigShouldFail)
 {
 	// Fail due to block size too large
 	hemi::ExecutionPolicy ep;
@@ -136,7 +136,7 @@ TEST_F(LaunchTest, InvalidConfigShouldFail)
         }
 }
 
-TEST_F(LaunchTest, CorrectVariadicParams_cudaLaunch) {
+TEST_F(LaunchTestDevice, CorrectVariadicParams_cudaLaunch) {
 	hemi::cudaLaunch(KernelFunc, dCount, dBdim, dGdim, 1);
 	ASSERT_SUCCESS(cudaDeviceSynchronize());
 	ASSERT_SUCCESS(cudaMemcpy(&count, dCount, sizeof(int), cudaMemcpyDefault));
@@ -153,7 +153,7 @@ TEST_F(LaunchTest, CorrectVariadicParams_cudaLaunch) {
 	ASSERT_EQ(count, 5);
 }
 
-TEST_F(LaunchTest, AutoConfigMaximalLaunch_cudaLaunch) {
+TEST_F(LaunchTestDevice, AutoConfigMaximalLaunch_cudaLaunch) {
 	hemi::cudaLaunch(KernelFunc, dCount, dBdim, dGdim);
 	ASSERT_SUCCESS(cudaDeviceSynchronize());
 	ASSERT_SUCCESS(cudaMemcpy(&bdim, dBdim, sizeof(int), cudaMemcpyDefault));
@@ -164,7 +164,7 @@ TEST_F(LaunchTest, AutoConfigMaximalLaunch_cudaLaunch) {
 	ASSERT_GE(bdim, 32);
 }
 
-TEST_F(LaunchTest, ExplicitBlockSize_cudaLaunch)
+TEST_F(LaunchTestDevice, ExplicitBlockSize_cudaLaunch)
 {
 	hemi::ExecutionPolicy ep;
 	ep.setBlockSize(128);
@@ -178,7 +178,7 @@ TEST_F(LaunchTest, ExplicitBlockSize_cudaLaunch)
 	ASSERT_EQ(bdim, 128);
 }
 
-TEST_F(LaunchTest, ExplicitGridSize_cudaLaunch)
+TEST_F(LaunchTestDevice, ExplicitGridSize_cudaLaunch)
 {
 	hemi::ExecutionPolicy ep;
 	ep.setGridSize(100);
@@ -191,7 +191,7 @@ TEST_F(LaunchTest, ExplicitGridSize_cudaLaunch)
 	ASSERT_GE(bdim, 32);
 }
 
-TEST_F(LaunchTest, InvalidConfigShouldFail_cudaLaunch)
+TEST_F(LaunchTestDevice, InvalidConfigShouldFail_cudaLaunch)
 {
 	// Fail due to block size too large
 	hemi::ExecutionPolicy ep;

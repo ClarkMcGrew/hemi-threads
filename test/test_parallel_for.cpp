@@ -3,6 +3,12 @@
 #include "hemi/parallel_for.h"
 #include <cuda_runtime_api.h>
 
+#ifdef HEMI_CUDA_DISABLE
+#define ParallelForTest ParallelForTestHost
+#else
+#define ParallelForTest ParallelForTestDevice
+#endif
+
 #ifndef HEMI_DEV_CODE
 inline void hostAtomicAdd(int* value, int increment) {
     int expected = *value;
