@@ -18,9 +18,6 @@ else
 	LIB_FLAGS := $(LIB_FLAGS_$(ARCH))
 endif
 
-# Points to the root of Google Test, relative to where this file is.
-# Remember to tweak this if you move this file.
-GTEST_DIR = googletest
 HEMI_DIR = ../
 CUDA_DIR := /usr/local/cuda
 
@@ -29,13 +26,13 @@ CUDA_DIR := /usr/local/cuda
 
 # Uncomment to add lots of debugging output to different sub-systems
 # HEMI_DEBUG_FLAGS+=-DHEMI_LAUNCH_DEBUG
-# HEMI_DEBUG_FLAGS+=-DHEMI_THREAD_DEBUG
+HEMI_DEBUG_FLAGS+=-DHEMI_THREAD_DEBUG
 # HEMI_DEBUG_FLAGS+=-DHEMI_ARRAY_DEBUG
 
 # Flags passed to the preprocessor.
 # Set Google Test's header directory as a system directory, such that
 # the compiler doesn't generate warnings in Google Test headers.
-CPPFLAGS += -isystem $(GTEST_DIR)/include
+CPPFLAGS += -isystem 
 
 # Flags passed to the C++ compiler.
 CXXFLAGS += -g -Wall -Wextra --std=c++17
@@ -43,7 +40,7 @@ CXXFLAGS += -DHEMI_CUDA_DISABLE
 CXXFLAGS += $(HEMI_DEBUG_FLAGS)
 
 # Flags passed to nvcc compiler.
-NVCCFLAGS += -g -arch=native --std=c++17
+NVCCFLAGS += -g -arch=native --std=c++14
 NVCCFLAGS += --extended-lambda
 NVCCFLAGS += -DHEMI_CUDA_CHECK_ERRORS
 NVCCFLAGS += $(HEMI_DEBUG_FLAGS)
@@ -64,10 +61,6 @@ TESTS_DEVICE = test_externals_device \
 	test_parallel_for_device \
 	test_array_device
 
-# All Google Test headers.  Usually you shouldn't change this
-# definition.
-GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
-                $(GTEST_DIR)/include/gtest/internal/*.h
 
 HEMI_HEADERS = $(HEMI_DIR)/hemi/*.h $(HEMI_DIR)/hemi/*.inl
 
@@ -76,32 +69,8 @@ HEMI_HEADERS = $(HEMI_DIR)/hemi/*.h $(HEMI_DIR)/hemi/*.inl
 all : test_hemi_device test_hemi_host
 
 clean :
-	rm -f test_hemi_device test_hemi_host gtest.a gtest_main.a *.o
+	rm -f test_hemi_device test_hemi_host *.o
 	rm -rf *.dSYM
-
-# Builds gtest.a and gtest_main.a.
-
-# Usually you shouldn't tweak such internal variables, indicated by a
-# trailing _.
-GTEST_SRCS_ = $(GTEST_DIR)/src/*.cc $(GTEST_DIR)/src/*.h $(GTEST_HEADERS)
-
-# For simplicity and to avoid depending on Google Test's
-# implementation details, the dependencies specified below are
-# conservative and not optimized.  This is fine as Google Test
-# compiles fast and for ordinary users its source rarely changes.
-gtest-all.o : $(GTEST_SRCS_)
-	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
-            $(GTEST_DIR)/src/gtest-all.cc
-
-gtest_main.o : $(GTEST_SRCS_)
-	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR) $(CXXFLAGS) -c \
-            $(GTEST_DIR)/src/gtest_main.cc
-
-gtest.a : gtest-all.o
-	$(AR) $(ARFLAGS) $@ $^
-
-gtest_main.a : gtest-all.o gtest_main.o
-	$(AR) $(ARFLAGS) $@ $^
 
 # Build tests
 
@@ -141,8 +110,8 @@ test_array_host.o: test_array.cpp $(HEMI_HEADERS)
 test_array_device.o: test_array.cpp  $(HEMI_HEADERS)
 	nvcc -x cu $(CPPFLAGS) $(NVCCFLAGS) -I$(HEMI_DIR) -I$(CUDA_DIR)/include $< -c -o $@
 
-test_hemi_device: $(TESTS_DEVICE:=.o) gtest_main.a
-	nvcc $^ gtest_main.a -lpthread $(LIB_FLAGS) -o $@
+test_hemi_device: $(TESTS_DEVICE:=.o) 
+	nvcc $^ /usr/lib/x86_64-linux-gnu/libgtest_main.a /usr/lib/x86_64-linux-gnu/libgtest.a $(LIB_FLAGS) -o $@
 
 test_hemi_host: $(TESTS_HOST:=.o) gtest_main.a
-	$(CXX) $^ gtest_main.a -lpthread $(LIB_FLAGS) -o $@
+	$(CXX) $^ /usr/lib/x86_64-linux-gnu/libgtest_main.a /usr/lib/x86_64-linux-gnu/libgtest.a -lpthread $(LIB_FLAGS) -o $@

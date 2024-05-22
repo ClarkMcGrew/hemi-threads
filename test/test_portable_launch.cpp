@@ -4,7 +4,9 @@
 #include "hemi/grid_stride_range.h"
 #include "unistd.h"
 
-#ifdef HEMI_CUDA_DISABLE
+#if defined(HEMI_THREADS_DISABLE) && defined(HEMI_CUDA_DISABLE)
+#define PortableLaunchTest PortableLaunchTestSingle
+#elif defined(HEMI_CUDA_DISABLE)
 #define PortableLaunchTest PortableLaunchTestHost
 #else
 #define PortableLaunchTest PortableLaunchTestDevice

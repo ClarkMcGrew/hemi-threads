@@ -3,7 +3,9 @@
 #include "hemi/parallel_for.h"
 #include <cuda_runtime_api.h>
 
-#ifdef HEMI_CUDA_DISABLE
+#if defined(HEMI_THREADS_DISABLE) && defined(HEMI_CUDA_DISABLE)
+#define ParallelForTest ParallelForTestSingle
+#elif defined(HEMI_CUDA_DISABLE)
 #define ParallelForTest ParallelForTestHost
 #else
 #define ParallelForTest ParallelForTestDevice
@@ -13,8 +15,19 @@
 inline void hostAtomicAdd(int* value, int increment) {
     int expected = *value;
     int updated;
+    int trials = 0;
     do {
+        if (++trials > 1000) std::runtime_error("Failed hostAtomicAdd");
         updated = expected + increment;
+    } while (not test_CAS_int(value,&expected,updated));
+}
+inline void hostAtomicSet(int* value, int newValue) {
+    int expected = *value;
+    int updated;
+    int trials = 0;
+    do {
+        if (++trials > 1000) std::runtime_error("Failed hostAtomicAdd");
+        updated = newValue;
     } while (not test_CAS_int(value,&expected,updated));
 }
 #endif
@@ -26,11 +39,13 @@ void runParallelFor([[maybe_unused]] int instance, int loop, int *count, int *gd
 {
 #ifdef HEMI_PARALLEL_FOR_ENABLED
     hemi::parallel_for(0, loop, [=] HEMI_LAMBDA (int i) {
-        *gdim = hemi::globalBlockCount();
-        *bdim = hemi::localThreadCount();
 #ifndef HEMI_DEV_CODE
+        hostAtomicSet(gdim,hemi::globalBlockCount());
+        hostAtomicSet(bdim,hemi::localThreadCount());
         hostAtomicAdd(count,1);
 #else
+        *gdim = hemi::globalBlockCount();
+        *bdim = hemi::localThreadCount();
         atomicAdd(count, 1);
 #endif
 
@@ -45,12 +60,14 @@ void runParallelForEP([[maybe_unused]] int instance, const hemi::ExecutionPolicy
 {
 #ifdef HEMI_PARALLEL_FOR_ENABLED
     hemi::parallel_for(ep, 0, loop, [=] HEMI_LAMBDA (int) {
-        *gdim = hemi::globalBlockCount();
-        *bdim = hemi::localThreadCount();
 
 #ifndef HEMI_DEV_CODE
+        hostAtomicSet(gdim,hemi::globalBlockCount());
+        hostAtomicSet(bdim,hemi::localThreadCount());
         hostAtomicAdd(count,1);
 #else
+        *gdim = hemi::globalBlockCount();
+        *bdim = hemi::localThreadCount();
         atomicAdd(count, 1);
 #endif
 
@@ -71,7 +88,9 @@ protected:
 
         int devId;
         ASSERT_SUCCESS(cudaGetDevice(&devId));
-        ASSERT_SUCCESS(cudaDeviceGetAttribute(&smCount, cudaDevAttrMultiProcessorCount, devId));
+        ASSERT_SUCCESS(cudaDeviceGetAttribute(&smCount,
+                                              cudaDevAttrMultiProcessorCount,
+                                              devId));
 #else
         dCount = new int;
         dBdim = new int;
@@ -97,13 +116,13 @@ protected:
     void Zero() {
 #ifdef HEMI_CUDA_COMPILER
         ASSERT_SUCCESS(cudaMemset(dCount, 0, sizeof(int)));
-        ASSERT_SUCCESS(cudaMemset(dBdim, 0, sizeof(int)));
-        ASSERT_SUCCESS(cudaMemset(dGdim, 0, sizeof(int)));
+        ASSERT_SUCCESS(cudaMemset(dBdim, 57, sizeof(int)));
+        ASSERT_SUCCESS(cudaMemset(dGdim, 57, sizeof(int)));
 #else
         hemi::deviceSynchronize();
-        *dCount = 0;
-        *dBdim = 0;
-        *dGdim = 0;
+        hostAtomicSet(dCount,0);
+        hostAtomicSet(dBdim,57);
+        hostAtomicSet(dGdim,57);
 #endif
         count = 0;
         bdim = 0;
@@ -146,8 +165,6 @@ TEST_F(ParallelForTest, ComputesCorrectSum) {
 TEST_F(ParallelForTest, AutoConfigMaximalLaunch) {
     Zero();
     runParallelFor(2, 1000, dCount, dGdim, dBdim);
-    ASSERT_SUCCESS(cudaDeviceSynchronize());
-
     CopyBack();
 
     ASSERT_GE(gdim, smCount);
@@ -162,17 +179,15 @@ TEST_F(ParallelForTest, AutoConfigMaximalLaunch) {
 TEST_F(ParallelForTest, ExplicitBlockSize)
 {
     Zero();
-	hemi::ExecutionPolicy ep;
-	ep.setBlockSize(128);
-	runParallelForEP(1, ep, 1000, dCount, dGdim, dBdim);
-	ASSERT_SUCCESS(hemi::deviceSynchronize());
-
+    hemi::ExecutionPolicy ep;
+    ep.setBlockSize(128);
+    runParallelForEP(1, ep, 1000, dCount, dGdim, dBdim);
     CopyBack();
 
-	ASSERT_GE(gdim, smCount);
-	ASSERT_EQ(gdim%smCount, 0);
+    ASSERT_GE(gdim, smCount);
+    ASSERT_EQ(gdim%smCount, 0);
 #ifdef HEMI_CUDA_COMPILER
-	ASSERT_EQ(bdim, 128);
+    ASSERT_EQ(bdim, 128);
 #else
     ASSERT_EQ(bdim, 1);
 #endif
@@ -181,16 +196,14 @@ TEST_F(ParallelForTest, ExplicitBlockSize)
 TEST_F(ParallelForTest, ExplicitGridSize)
 {
     Zero();
-	hemi::ExecutionPolicy ep;
-	ep.setGridSize(100);
-	runParallelForEP(2, ep, 1000, dCount, dGdim, dBdim);
-	ASSERT_SUCCESS(cudaDeviceSynchronize());
-
+    hemi::ExecutionPolicy ep;
+    ep.setGridSize(100);
+    runParallelForEP(2, ep, 1000, dCount, dGdim, dBdim);
     CopyBack();
 
 #ifdef HEMI_CUDA_COMPILER
-	ASSERT_EQ(gdim, 100);
-	ASSERT_GE(bdim, 32);
+    ASSERT_EQ(gdim, 100);
+    ASSERT_GE(bdim, 32);
 #else
     ASSERT_EQ(gdim, 1);
     ASSERT_EQ(bdim, 1);

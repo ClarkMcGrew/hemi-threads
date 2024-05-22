@@ -4,7 +4,9 @@
 #include "hemi/grid_stride_range.h"
 #include <algorithm>
 
-#ifdef HEMI_CUDA_DISABLE
+#if defined(HEMI_THREADS_DISABLE) && defined(HEMI_CUDA_DISABLE)
+#define ArrayTest ArrayTestSingle
+#elif defined(HEMI_CUDA_DISABLE)
 #define ArrayTest ArrayTestHost
 #else
 #define ArrayTest ArrayTestDevice
@@ -12,18 +14,22 @@
 
 TEST(ArrayTest, CreatesAndFillsArrayOnHost)
 {
-	const int n = 50;
-	const float val = 3.14159f;
-	hemi::Array<float> data(n);
 
-	ASSERT_EQ(data.size(), n);
+    const int n = 50;
+    const float val = 3.14159f;
+    hemi::Array<float> data(n);
 
-	float *ptr = data.writeOnlyHostPtr();
-	std::fill(ptr, ptr+n, val);
+    ASSERT_EQ(data.size(), n);
 
-	for(int i = 0; i < n; i++) {
-		ASSERT_EQ(val, data.readOnlyHostPtr()[i]);
-	}
+    float *ptr = data.writeOnlyHostPtr();
+    ASSERT_NE(ptr,nullptr);
+
+    std::fill(ptr, ptr+n, val);
+
+    for(int i = 0; i < n; i++) {
+        ASSERT_EQ(val, data.readOnlyHostPtr()[i]);
+    }
+
 }
 
 namespace {
@@ -43,19 +49,19 @@ void fillOnDevice(float* ptr, int n, float val) {
 
 TEST(ArrayTest, CreatesAndFillsArrayOnDevice)
 {
-	const int n = 50;
-	const float val = 3.14159f;
-	hemi::Array<float> data(n);
+    const int n = 50;
+    const float val = 3.14159f;
+    hemi::Array<float> data(n);
 
-	ASSERT_EQ(data.size(), n);
+    ASSERT_EQ(data.size(), n);
 
-	fillOnDevice(data.writeOnlyPtr(), n, val);
+    fillOnDevice(data.writeOnlyPtr(), n, val);
 
-	for(int i = 0; i < n; i++) {
-		ASSERT_EQ(val, data.readOnlyPtr(hemi::host)[i]);
-	}
+    for(int i = 0; i < n; i++) {
+        ASSERT_EQ(val, data.readOnlyPtr(hemi::host)[i]);
+    }
 
-	ASSERT_SUCCESS(hemi::deviceSynchronize());
+    ASSERT_SUCCESS(hemi::deviceSynchronize());
 }
 
 namespace {
@@ -69,26 +75,28 @@ namespace {
 }
 
 void squareOnDevice(hemi::Array<float> &a) {
-        HEMISquare squareArray;
-        hemi::launch(squareArray,a.ptr(),a.size());
+    HEMISquare squareArray;
+    hemi::launch(squareArray,a.ptr(),a.size());
 }
 
 TEST(ArrayTest, FillsOnHostModifiesOnDevice)
 {
-	const int n = 50;
-	const float val = 3.14159f;
-	hemi::Array<float> data(n);
+    const int n = 50;
+    const float val = 3.14159f;
+    hemi::Array<float> data(n);
 
-	ASSERT_EQ(data.size(), n);
+    ASSERT_EQ(data.size(), n);
 
-	float *ptr = data.writeOnlyHostPtr();
-	std::fill(ptr, ptr+n, val);
+    float *ptr = data.writeOnlyHostPtr();
+    std::fill(ptr, ptr+n, val);
 
-	squareOnDevice(data);
+    squareOnDevice(data);
 
-	for(int i = 0; i < n; i++) {
-		ASSERT_EQ(val*val, data.readOnlyPtr(hemi::host)[i]);
-	}
+    ASSERT_SUCCESS(hemi::deviceSynchronize());
 
-	ASSERT_SUCCESS(hemi::deviceSynchronize());
+    for(int i = 0; i < n; i++) {
+        ASSERT_EQ(val*val, data.readOnlyPtr(hemi::host)[i]);
+    }
+
+    ASSERT_SUCCESS(hemi::deviceSynchronize());
 }

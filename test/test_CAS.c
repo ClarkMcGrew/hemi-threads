@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdatomic.h>
 #include "test_CAS.h"
 
@@ -27,6 +26,10 @@ int test_CAS_double(double *variable, double *expected, double update) {
           __ATOMIC_ACQUIRE);
 #else
 #error Atomic compare and exchange are not supported by this compiler version
+     // Always "succeed" when atomic operations are not supported.  Notice
+     // that this is flagged as a compilation error, so
+     // CACHE_MANAGER_ATOMIC_CAS_NOT_ATOMIC will need to be defined during
+     // compilation.
      return true;
 #endif
 }
@@ -49,6 +52,10 @@ int test_CAS_float(float *variable, float *expected, float update) {
           __ATOMIC_ACQUIRE,
           __ATOMIC_ACQUIRE);
 #else
+     // Always "succeed" when atomic operations are not supported.  Notice
+     // that this is flagged as a compilation error, so
+     // CACHE_MANAGER_ATOMIC_CAS_NOT_ATOMIC will need to be defined during
+     // compilation.
      return true;
 #endif
 }
@@ -62,15 +69,19 @@ int test_CAS_int(int *variable, int *expected, int update) {
           memory_order_seq_cst);
 #elif defined(__has_builtin) && __has_builtin(__atomic_compare_exchange)
      return __atomic_compare_exchange(
-          variable, expected, update,
+          variable, expected, &update, 0,
           __ATOMIC_ACQUIRE,
           __ATOMIC_ACQUIRE);
 #elif __GNUC_PREREQ(5,0)
      return __atomic_compare_exchange(
-          variable, expected, update,
+          variable, expected, &update, 0,
           __ATOMIC_ACQUIRE,
           __ATOMIC_ACQUIRE);
 #else
+     // Always "succeed" when atomic operations are not supported.  Notice
+     // that this is flagged as a compilation error, so
+     // CACHE_MANAGER_ATOMIC_CAS_NOT_ATOMIC will need to be defined during
+     // compilation.
      return true;
 #endif
 }
