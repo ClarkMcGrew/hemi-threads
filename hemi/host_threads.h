@@ -122,15 +122,14 @@ public:
      }
 
      void wait() {
-          while (!mPendingKernels.empty() || mWorkerThreadsBusy > 0) {
+          while (!mPendingKernels.empty() || mMainThreadBusy) {
                HEMI_THREAD_OUTPUT("hemi::threads::ThreadPool::Wait()"
                                   << " kernels: " << mPendingKernels.size()
                                   << " workers: " << mWorkerThreadsBusy);
                std::unique_lock<std::mutex> lk(mBusyUpdatedMutEx);
-               if (mWorkerThreadsBusy < 1 && mPendingKernels.empty()) break;
+               if (!mMainThreadBusy && mPendingKernels.empty()) break;
                mBusyUpdatedCV.wait(lk);
                lk.unlock();
-               if (mWorkerThreadsBusy < 1 && mPendingKernels.empty()) break;
           }
      }
 
@@ -144,8 +143,8 @@ private:
           {
                std::lock_guard<std::mutex> lock(mBusyUpdatedMutEx);
                --mWorkerThreadsBusy;
-               mBusyUpdatedCV.notify_all();
           }
+          mBusyUpdatedCV.notify_all();
           bool running = true;
           while (running) {
                while (true) {
@@ -169,8 +168,8 @@ private:
                {
                     std::lock_guard<std::mutex> lock(mBusyUpdatedMutEx);
                     --mWorkerThreadsBusy;
-                    mBusyUpdatedCV.notify_all();
                }
+               mBusyUpdatedCV.notify_all();
           }
           HEMI_THREAD_OUTPUT("hemi::threads: Worker exiting"
                              << " " << index);
@@ -182,8 +181,8 @@ private:
           {
                std::lock_guard<std::mutex> lock(mBusyUpdatedMutEx);
                mMainThreadBusy = false;
-               mBusyUpdatedCV.notify_all();
           }
+          mBusyUpdatedCV.notify_all();
           while (running) {
                HEMI_THREAD_OUTPUT("hemi::threads: Top of main thread"
                                   << " pending: " << mPendingKernels.size()
@@ -217,12 +216,12 @@ private:
                          mPendingKernels.pop_front();
                     }
                }
-               for (auto& w : mWorkerPool) {
-                    w.mState = nextState;
-                    w.mCurrentKernel = nextKernel;
-               }
                {
                     std::lock_guard<std::mutex> lock(mStartWorkerMutEx);
+                    for (auto& w : mWorkerPool) {
+                         w.mState = nextState;
+                         w.mCurrentKernel = nextKernel;
+                    }
                     mWorkerThreadsBusy = mWorkerPool.size();
                     mStartWorkerCV.notify_all();
                }
@@ -235,11 +234,15 @@ private:
                     lk.unlock();
                     if (mWorkerThreadsBusy < 1) break;
                };
+               // Check if there is something left to do.
+               if (not mPendingKernels.empty()) continue;
+               if (mStopSignal) continue;
+               // All done for now, so let everybody know.
                {
                     std::lock_guard<std::mutex> lock(mBusyUpdatedMutEx);
                     mMainThreadBusy = false;
-                    mBusyUpdatedCV.notify_all();
                }
+               mBusyUpdatedCV.notify_all();
                HEMI_THREAD_OUTPUT("hemi::threads: Main thread finished");
           }
           HEMI_THREAD_OUTPUT("hemi::threads: Exit main thread");
@@ -251,12 +254,12 @@ private:
      std::vector<WorkerStatus> mWorkerPool;
 
      // Trigger that the busy status has updated.  This needs to be locked
-     // before changing mMainThreadBusy, or mWorkerThreadsBusy. 
+     // before changing mMainThreadBusy, or mWorkerThreadsBusy.
      std::mutex mBusyUpdatedMutEx;
      std::condition_variable mBusyUpdatedCV;
      std::atomic<bool> mMainThreadBusy;
      std::atomic<int> mWorkerThreadsBusy;
-     
+
      // Trigger for the main thread start.  This also protects changes to the
      // pending kernels vector.
      std::mutex mStartMainMutEx;
