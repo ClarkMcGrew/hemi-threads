@@ -12,23 +12,25 @@
 #endif
 
 #ifndef HEMI_DEV_CODE
-inline void hostAtomicAdd(int* value, int increment) {
-    int expected = *value;
-    int updated;
-    int trials = 0;
-    do {
-        if (++trials > 1000) std::runtime_error("Failed hostAtomicAdd");
-        updated = expected + increment;
-    } while (not test_CAS_int(value,&expected,updated));
-}
-inline void hostAtomicSet(int* value, int newValue) {
-    int expected = *value;
-    int updated;
-    int trials = 0;
-    do {
-        if (++trials > 1000) std::runtime_error("Failed hostAtomicAdd");
-        updated = newValue;
-    } while (not test_CAS_int(value,&expected,updated));
+namespace {
+    inline void hostAtomicAdd(int* value, int increment) {
+        int expected = *value;
+        int updated;
+        int trials = 0;
+        do {
+            if (++trials > 1000) std::runtime_error("Failed hostAtomicAdd");
+            updated = expected + increment;
+        } while (not test_CAS_int(value,&expected,updated));
+    }
+    inline void hostAtomicSet(int* value, int newValue) {
+        int expected = *value;
+        int updated;
+        int trials = 0;
+        do {
+            if (++trials > 1000) std::runtime_error("Failed hostAtomicAdd");
+            updated = newValue;
+        } while (not test_CAS_int(value,&expected,updated));
+    }
 }
 #endif
 
