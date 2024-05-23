@@ -172,6 +172,7 @@ namespace hemi {
           // host memory as invalid.
           T* devicePtr()
           {
+#ifndef HEMI_CUDA_DISABLE
                HEMI_ARRAY_OUTPUT("devicePtr::"
                                  << " Device: " << isDeviceValid
                                  << " Host: " << isHostValid);
@@ -180,6 +181,7 @@ namespace hemi {
                else assert(isDeviceValid);
                isDeviceValid = true;
                isHostValid = false;
+#endif
                return dPtr;
           }
 
@@ -193,7 +195,8 @@ namespace hemi {
           }
 
           // Read-only: Reference the memory on the host.  Copies data from
-          // the device to the host (if needed).
+          // the device to the host (if needed).  Do not mark the device data
+          // as invalid (device data is read-only).
           const T* readOnlyHostPtr() const
           {
                HEMI_ARRAY_OUTPUT("readOnlyHostPtr::"
@@ -208,7 +211,8 @@ namespace hemi {
           }
 
           // Read-only: Reference the memory on the device.  Copies data from
-          // the host to the device (if needed).
+          // the host to the device (if needed).  Do not mark the host data as
+          // invalid (host data is read-only).
           const T* readOnlyDevicePtr() const
           {
                HEMI_ARRAY_OUTPUT("readOnlyDevicePtr::"
@@ -296,6 +300,9 @@ namespace hemi {
                checkCuda( cudaMalloc((void**)&dPtr, nSize * sizeof(T)) );
                isDeviceAlloced = true;
                isDeviceValid = false;
+#else
+               std::cerr << "ERROR: allocateDevice without cuda" << std::endl;
+               throw std::runtime_error("Access to device without CUDA");
 #endif
           }
 
