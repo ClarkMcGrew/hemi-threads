@@ -111,6 +111,8 @@ public:
      void add(std::function<void()> k) {
           std::unique_lock<std::mutex> lock(mStartMainMutEx);
           mPendingKernels.push_back(k);
+          mMainThreadBusy = true;  // Premptively mark main thread as busy.
+          lock.unlock();
           HEMI_THREAD_OUTPUT("hemi::threads: Add kernel"
                              << " pending: " << mPendingKernels.size());
           mStartMainCV.notify_all();
@@ -178,25 +180,31 @@ private:
      void mainThread() {
           gThreadIdx = -2;
           bool running = true;
-          {
-               std::lock_guard<std::mutex> lock(mBusyUpdatedMutEx);
-               mMainThreadBusy = false;
-          }
-          mBusyUpdatedCV.notify_all();
           while (running) {
                HEMI_THREAD_OUTPUT("hemi::threads: Top of main thread"
                                   << " pending: " << mPendingKernels.size()
                                   << " stopping: " << mStopSignal );
-               while (true) {
+               while (mPendingKernels.empty() and not mStopSignal) {
+                    {
+                         std::lock_guard<std::mutex> lock(mBusyUpdatedMutEx);
+                         mMainThreadBusy = false;
+                    }
+                    mBusyUpdatedCV.notify_all();
                     std::unique_lock<std::mutex> lk(mStartMainMutEx);
                     if (!mPendingKernels.empty()) break;
                     if (mStopSignal) break;
                     mStartMainCV.wait(lk);
                     lk.unlock();
-                    if (!mPendingKernels.empty()) break;
-                    if (mStopSignal) break;
                }
                mMainThreadBusy = true;
+               {
+                    std::lock_guard<std::mutex> lock(mStartWorkerMutEx);
+                    for (auto& w : mWorkerPool) {
+                         if (w.mState == WorkerStatus::kFinished) continue;
+                         throw std::runtime_error(
+                              "hemi::threads::Worker not finished");
+                    }
+               }
                HEMI_THREAD_OUTPUT("hemi::threads: Main thread starting"
                                   << " pending: " << mPendingKernels.size()
                                   << " stopping: " << mStopSignal );
@@ -225,24 +233,22 @@ private:
                     mWorkerThreadsBusy = mWorkerPool.size();
                     mStartWorkerCV.notify_all();
                }
-               while(true){
+               while (mWorkerThreadsBusy > 0){
                     HEMI_THREAD_OUTPUT("hemi::threads: Main waiting for workers"
                                        << " busy: " << mWorkerThreadsBusy);
                     std::unique_lock<std::mutex> lk(mBusyUpdatedMutEx);
                     if (mWorkerThreadsBusy < 1) break;
                     mBusyUpdatedCV.wait(lk);
                     lk.unlock();
-                    if (mWorkerThreadsBusy < 1) break;
                };
-               // Check if there is something left to do.
-               if (not mPendingKernels.empty()) continue;
-               if (mStopSignal) continue;
-               // All done for now, so let everybody know.
                {
-                    std::lock_guard<std::mutex> lock(mBusyUpdatedMutEx);
-                    mMainThreadBusy = false;
+                    std::lock_guard<std::mutex> lock(mStartWorkerMutEx);
+                    for (auto& w : mWorkerPool) {
+                         if (w.mState == WorkerStatus::kFinished) continue;
+                         throw std::runtime_error(
+                              "hemi::threads::Worker not finished");
+                    }
                }
-               mBusyUpdatedCV.notify_all();
                HEMI_THREAD_OUTPUT("hemi::threads: Main thread finished");
           }
           HEMI_THREAD_OUTPUT("hemi::threads: Exit main thread");
