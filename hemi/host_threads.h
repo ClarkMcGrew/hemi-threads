@@ -15,6 +15,12 @@
 #include <vector>
 #include <deque>
 
+#ifndef HEMI_THREADS_DEFAULT_NUMBER
+// Add a default number of threads to use.  This can be overridden at
+// compilation time.
+#define HEMI_THREADS_DEFAULT_NUMBER (1+std::thread::hardware_concurrency()/2)
+#endif
+
 #ifdef HEMI_THREADS_DEBUG
 #warning hemi::threads -- Compiled with debugging
 #include <iostream>
@@ -77,7 +83,7 @@ public:
           mWorkerThreadsBusy = 0;
           mStopSignal = false;
           gThreadIdx = -1;
-          if (threads < 1) threads = std::thread::hardware_concurrency()/2;
+          if (threads < 1) threads = HEMI_THREADS_DEFAULT_NUMBER;
           std::cout << "hemi::threads: Create pool of " << threads << std::endl;
           HEMI_THREAD_OUTPUT("hemi::threads: Create pool of " << threads);
           mWorkerPool.reserve(threads);
