@@ -56,6 +56,9 @@ add_executable(test_hemi_host
   test_parallel_for.cpp 
   test_array.cpp)
 target_compile_definitions(test_hemi_host PUBLIC HEMI_CUDA_DISABLE)
+# target_compile_definitions(test_hemi_host PUBLIC HEMI_ARRAY_WITHOUT_MIRROR)
+# target_compile_definitions(test_hemi_host PUBLIC HEMI_ARRAY_DEBUG)
+# target_compile_definitions(test_hemi_host PUBLIC HEMI_THREADS_DEBUG)
 target_link_libraries(test_hemi_host PUBLIC GTest::gtest_main)
 gtest_discover_tests(test_hemi_host)
 
