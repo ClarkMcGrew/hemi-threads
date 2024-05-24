@@ -15,7 +15,7 @@
 #include <vector>
 #include <deque>
 
-#ifdef HEMI_THREAD_DEBUG
+#ifdef HEMI_THREADS_DEBUG
 #warning hemi::threads -- Compiled with debugging
 #include <iostream>
 HEMI_INLINE_VARIABLE(std::mutex hemi_thread_debug_mutex, {}); // Thread mutex
@@ -126,6 +126,9 @@ public:
      void wait() {
           while (!mPendingKernels.empty() || mMainThreadBusy) {
                HEMI_THREAD_OUTPUT("hemi::threads::ThreadPool::Wait()"
+                                  << " ThreadIdx: " << gThreadIdx
+                                  << " " << threadIdx()
+                                  << " busy: " << mMainThreadBusy
                                   << " kernels: " << mPendingKernels.size()
                                   << " workers: " << mWorkerThreadsBusy);
                std::unique_lock<std::mutex> lk(mBusyUpdatedMutEx);
@@ -197,14 +200,6 @@ private:
                     lk.unlock();
                }
                mMainThreadBusy = true;
-               {
-                    std::lock_guard<std::mutex> lock(mStartWorkerMutEx);
-                    for (auto& w : mWorkerPool) {
-                         if (w.mState == WorkerStatus::kFinished) continue;
-                         throw std::runtime_error(
-                              "hemi::threads::Worker not finished");
-                    }
-               }
                HEMI_THREAD_OUTPUT("hemi::threads: Main thread starting"
                                   << " pending: " << mPendingKernels.size()
                                   << " stopping: " << mStopSignal );
@@ -242,6 +237,8 @@ private:
                     lk.unlock();
                };
                {
+                    // Do a safety check.  This should never fail, and can
+                    // be removed from production code.
                     std::lock_guard<std::mutex> lock(mStartWorkerMutEx);
                     for (auto& w : mWorkerPool) {
                          if (w.mState == WorkerStatus::kFinished) continue;
