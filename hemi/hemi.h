@@ -199,7 +199,7 @@ namespace hemi {
 namespace hemi {
     inline bool deviceAvailable(bool dump = false) {
          if (dump) {
-              std::cout << "HEMI DEVICE: No device" << std::endl;
+              std::cout << "HEMI DEVICE COUNT: No Device" << std::endl;
          }
          return false;
     }
@@ -208,32 +208,51 @@ namespace hemi {
 #include <cuda_runtime_api.h>
 namespace hemi {
     inline bool deviceAvailable(bool dump = false) {
+         cudaError_t status;
+         int devCount;
+         status = cudaGetDeviceCount(&devCount);
+         if (status != cudaSuccess) {
+              if (dump) std::cout << "HEMI DEVICE COUNT: No Device" << std::endl;
+              return false;
+         }
+
          int devId;
-         cudaError_t status = cudaGetDevice(&devId);
-         if (status != cudaSuccess) return false;
+         status = cudaGetDevice(&devId);
+         if (status != cudaSuccess) {
+              if (dump) std::cout << "HEMI DEVICE COUNT: No Device" << std::endl;
+              return false;
+         }
 
          cudaDeviceProp prop;
          status = cudaGetDeviceProperties(&prop, devId);
-         if (status != cudaSuccess) return false;
+         if (status != cudaSuccess) {
+              if (dump) std::cout << "HEMI DEVICE COUNT: No Device" << std::endl;
+              return false;
+         }
 
          if (dump) {
-              std::cout << "HEMI DEVICE:     " << prop.name << std::endl;
-              std::cout << "HEMI GLOBAL MEM: " << prop.totalGlobalMem << std::endl;
-              std::cout << "HEMI PROCESSORS: " << prop.multiProcessorCount << std::endl;
-              std::cout << "HEMI SHARED MEM: " << prop.sharedMemPerBlock << std::endl;
-              std::cout << "HEMI REGISTERS:  " << prop.regsPerBlock << std::endl;
-              std::cout << "HEMI WARP:       " << prop.warpSize << std::endl;
-              std::cout << "HEMI MEM PITCH:  " << prop.memPitch << std::endl;
-              std::cout << "HEMI THREADS:    " << prop.maxThreadsPerBlock << std::endl;
-              std::cout << "HEMI THREAD DIM: " << prop.maxThreadsDim[0]
-                        << " " << prop.maxThreadsDim[1]
-                        << " " << prop.maxThreadsDim[2] << std::endl;
-              std::cout << "HEMI MAX GRID:   " << prop.maxGridSize[0]
-                        << " " << prop.maxGridSize[1]
-                        << " " << prop.maxGridSize[2] << std::endl;
-              std::cout << "HEMI CLOCK:      " << prop.clockRate << std::endl;
-              std::cout << "HEMI CONST MEM:  " << prop.totalConstMem << std::endl;
-              std::cout << "HEMI COMPUTE:    " << prop.major << "." << prop.minor << std::endl;
+              std::cout << "HEMI DEVICE COUNT:         " << devCount << std::endl;
+              std::cout << "HEMI DEVICE ID:            " << devId << std::endl;
+              std::cout << "HEMI DEVICE NAME:          " << prop.name << std::endl;
+              std::cout << "HEMI COMPUTE CAPABILITY:   " << prop.major << "." << prop.minor << std::endl;
+              std::cout << "HEMI PROCESSORS:           " << prop.multiProcessorCount << std::endl;
+              std::cout << "HEMI PROCESSOR THREADS:    " << prop.maxThreadsPerMultiProcessor << std::endl;
+              std::cout << "HEMI MAX THREADS:          " << prop.maxThreadsPerMultiProcessor*prop.multiProcessorCount << std::endl;
+              std::cout << "HEMI THREADS PER BLOCK:    " << prop.maxThreadsPerBlock << std::endl;
+              std::cout << "HEMI BLOCK MAX DIM:        " << "X:" << prop.maxThreadsDim[0]
+                        << " Y:" << prop.maxThreadsDim[1]
+                        << " Z:" << prop.maxThreadsDim[2] << std::endl;
+              std::cout << "HEMI GRID MAX DIM:         " << "X:" << prop.maxGridSize[0]
+                        << " Y:" << prop.maxGridSize[1]
+                        << " Z:" << prop.maxGridSize[2] << std::endl;
+              std::cout << "HEMI WARP:                 " << prop.warpSize << std::endl;
+              std::cout << "HEMI CLOCK:                " << prop.clockRate << std::endl;
+              std::cout << "HEMI GLOBAL MEM:           " << prop.totalGlobalMem << std::endl;
+              std::cout << "HEMI SHARED MEM:           " << prop.sharedMemPerBlock << std::endl;
+              std::cout << "HEMI L2 CACHE MEM:         " << prop.l2CacheSize << std::endl;
+              std::cout << "HEMI CONST MEM:            " << prop.totalConstMem << std::endl;
+              std::cout << "HEMI MEM PITCH:            " << prop.memPitch << std::endl;
+              std::cout << "HEMI REGISTERS:            " << prop.regsPerBlock << std::endl;
          }
 
          if (prop.totalGlobalMem < 1) return false;
