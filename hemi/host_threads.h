@@ -18,7 +18,8 @@
 #ifndef HEMI_THREADS_DEFAULT_NUMBER
 // Add a default number of threads to use.  This can be overridden at
 // compilation time.
-#define HEMI_THREADS_DEFAULT_NUMBER (1+std::thread::hardware_concurrency()/2)
+#include <cmath>
+#define HEMI_THREADS_DEFAULT_NUMBER (1+(int)std::sqrt(std::thread::hardware_concurrency()))
 #endif
 
 #ifdef HEMI_THREADS_DEBUG
