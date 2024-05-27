@@ -38,22 +38,23 @@ include_directories(${CMAKE_SOURCE_DIR}/..)
 enable_testing()
 
 add_executable(test_hemi_single
-  test_CAS.c 
-  test_externals.cpp 
-  test_execution_policy.cpp 
-  test_portable_launch.cpp 
-  test_parallel_for.cpp 
+  test_CAS.c
+  test_externals.cpp
+  test_execution_policy.cpp
+  test_portable_launch.cpp
+  test_parallel_for.cpp
   test_array.cpp)
 target_compile_definitions(test_hemi_single PUBLIC HEMI_THREADS_DISABLE HEMI_CUDA_DISABLE)
 target_link_libraries(test_hemi_single PUBLIC GTest::gtest_main)
 gtest_discover_tests(test_hemi_single)
 
 add_executable(test_hemi_host
-  test_CAS.c 
-  test_externals.cpp 
-  test_execution_policy.cpp 
-  test_portable_launch.cpp 
-  test_parallel_for.cpp 
+  test_CAS.c
+  test_externals.cpp
+  test_range.cpp
+  test_execution_policy.cpp
+  test_portable_launch.cpp
+  test_parallel_for.cpp
   test_array.cpp)
 target_compile_definitions(test_hemi_host PUBLIC HEMI_CUDA_DISABLE)
 # target_compile_definitions(test_hemi_host PUBLIC HEMI_ARRAY_WITHOUT_MIRROR)
@@ -75,6 +76,3 @@ target_compile_options(test_hemi_device PUBLIC
 target_link_libraries(test_hemi_device PUBLIC GTest::gtest_main)
 target_compile_definitions(test_hemi_device PUBLIC HEMI_CUDA_CHECK_ERROR)
 gtest_discover_tests(test_hemi_device)
-
-
-

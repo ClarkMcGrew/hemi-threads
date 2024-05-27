@@ -35,11 +35,9 @@ struct k {
 
 struct slowKernel {
     HEMI_DEV_CALLABLE_MEMBER void operator()(int increment) const {
-        // printf("start %d\n", hemi::globalThreadIndex());
         double sum = 0.0;
         for (int i : hemi::grid_stride_range(0,1000)) {
             for (int j = 0; j < 10000; ++j)  sum = sum + increment;
-            // if (sum >10) printf("slow %d %d %f\n", hemi::globalThreadIndex(), i, sum);
         }
     }
 };
