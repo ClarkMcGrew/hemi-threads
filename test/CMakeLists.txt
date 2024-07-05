@@ -40,6 +40,7 @@ enable_testing()
 add_executable(test_hemi_single
   test_CAS.c
   test_externals.cpp
+  test_range.cpp
   test_execution_policy.cpp
   test_portable_launch.cpp
   test_parallel_for.cpp
@@ -66,6 +67,7 @@ gtest_discover_tests(test_hemi_host)
 add_executable(test_hemi_device
   test_CAS.c
   test_externals.cpp
+  test_range.cpp
   test_execution_policy.cu
   test_launch.cu
   test_portable_launch.cu

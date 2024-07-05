@@ -14,14 +14,17 @@
 TEST(RangeTest, SequentialRange) {
     int low = 0;
     int high = 10;
-    int step = 3;
+    int step = 1;
     int expected = low;
+    int iterations = 0;
     for (auto val: util::lang::range(low,high).step(step)) {
         ASSERT_GE(val,low) << "below low end of range";
         ASSERT_LT(val,high) << "above high end of range";
         EXPECT_EQ(expected,val);
         expected += step;
+        ++iterations;
     }
+    ASSERT_EQ(iterations,(high-low)) << "correct number of iterations";
 }
 
 TEST(RangeTest, SteppedRange) {
@@ -29,12 +32,15 @@ TEST(RangeTest, SteppedRange) {
     int high = 10;
     int step = 3;
     int expected = low;
+    int iterations = 0;
     for (auto val: util::lang::range(low,high).step(step)) {
         ASSERT_GE(val,low) << "below low end of range";
         ASSERT_LT(val,high) << "above high end of range";
         EXPECT_EQ(expected,val);
         expected += step;
+        ++iterations;
     }
+    ASSERT_EQ(iterations,1+(high-low)/step) << "correct number of iterations";
 }
 
 TEST(RangeTest, LimitedRange) {
@@ -42,12 +48,31 @@ TEST(RangeTest, LimitedRange) {
     int high = 13;
     int step = 1;
     int expected = low;
+    int iterations = 0;
     for (auto val: util::lang::range(low,high).step(step)) {
         ASSERT_GE(val,low) << "below low end of range";
         ASSERT_LT(val,high) << "above high end of range";
         EXPECT_EQ(expected,val);
         expected += step;
+        ++iterations;
     }
+    ASSERT_EQ(iterations,(high-low)) << "correct number of iterations";
+}
+
+TEST(RangeTest, SingleRange) {
+    int low = 0;
+    int high = 1;
+    int step = 1;
+    int expected = low;
+    int iterations = 0;
+    for (auto val: util::lang::range(low,high).step(step)) {
+        ASSERT_GE(val,low) << "below low end of range";
+        ASSERT_LT(val,high) << "above high end of range";
+        EXPECT_EQ(expected,val);
+        expected += step;
+        ++iterations;
+    }
+    ASSERT_EQ(iterations,(high-low)) << "correct number of iterations";
 }
 
 TEST(RangeTest, InvalidRange) {
@@ -55,7 +80,6 @@ TEST(RangeTest, InvalidRange) {
     int high = 3;
     int step = 1;
     int expected = low;
-
     int iterations = 0;
     for (auto val: util::lang::range(low,high)) {
         ++iterations;
@@ -69,25 +93,12 @@ TEST(RangeTest, ZeroSteppedRange) {
     int high = 3;
     int step = 1;
     int expected = low;
-
+    int iterations = 0;
     for (auto val: util::lang::range(low,high).step(step)) {
         ASSERT_GE(val,low) << "below low end of range";
         ASSERT_LT(val,high) << "above high end of range";
         EXPECT_EQ(expected,val);
         expected += step;
-    }
-}
-
-TEST(RangeTest, NegativeRange) {
-    int low = 3;
-    int high = 13;
-    int step = -1;
-    int expected = high;
-
-    for (auto val: util::lang::range(high,low).step(step)) {
-        ASSERT_GE(val,low) << "Low value";
-        ASSERT_LE(val,high) << "High value";
-        EXPECT_EQ(expected,val);
-        expected += step;
+        ++iterations;
     }
 }
