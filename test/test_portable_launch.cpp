@@ -45,9 +45,11 @@ struct slowKernel {
 TEST(PortableLaunchTest, KernelFunction_AutoConfig) {
     k<int> kernel;
     hemi::launch(kernel, 1);
+    hemi::deviceSynchronize();
 }
 
 TEST(PortableLaunchTest, KernelFunction_Slow) {
     slowKernel kernel;
     hemi::launch(kernel, 1);
+    hemi::deviceSynchronize();
 }
