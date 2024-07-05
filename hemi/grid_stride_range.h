@@ -22,16 +22,29 @@
 
 namespace hemi {
 
-        // type alias to simplify typing...
-        template<typename T>
-        using step_range = typename util::lang::range_proxy<T>::step_range_proxy;
+    // type alias to simplify typing...
+    template<typename T>
+    using step_range = typename util::lang::range_proxy<T>::step_range_proxy;
 
-	template <typename T>
-	HEMI_DEV_CALLABLE_INLINE
-	step_range<T> grid_stride_range(T begin, T end) {
-	    begin += hemi::globalThreadIndex();
-	    return util::lang::range(begin, end).step(hemi::globalThreadCount());
-	}
+#if not defined(HEMI_CUDA_DISABLE) || defined(HEMI_HOST_WITH_STRIDE)
+    template <typename T>
+    HEMI_DEV_CALLABLE_INLINE
+    step_range<T> grid_stride_range(T begin, T end) {
+        begin += hemi::globalThreadIndex();
+        return util::lang::range(begin, end).step(hemi::globalThreadCount());
+    }
+#else
+    template <typename T>
+    HEMI_DEV_CALLABLE_INLINE
+    step_range<T> grid_stride_range(T begin, T end) {
+        if (end < begin) std::runtime_error("Invalid grid_stride_range");
+        T steps = 1 + (end-begin)/hemi::globalThreadCount();
+        T first = begin + hemi::globalThreadIndex()*steps;
+        T last = first + steps;
+        if (last > end) last = end;
+        return util::lang::range(first, last).step(1);
+    }
+#endif
 
 }
 /////////////////////////////////////////////////////////////////
